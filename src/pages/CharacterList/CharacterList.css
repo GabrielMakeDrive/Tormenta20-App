@@ -1,0 +1,71 @@
+.character-list-page .characters-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.character-item {
+  position: relative;
+}
+
+.delete-btn {
+  position: absolute;
+  top: 50%;
+  right: -8px;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  background: var(--danger-color);
+  border: none;
+  border-radius: 50%;
+  font-size: 1rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.character-item:hover .delete-btn,
+.character-item:active .delete-btn {
+  opacity: 1;
+}
+
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.empty-icon {
+  font-size: 4rem;
+  margin-bottom: 16px;
+}
+
+.empty-state h3 {
+  font-size: 1.3rem;
+  color: var(--text-primary);
+  margin: 0 0 8px 0;
+}
+
+.empty-state p {
+  color: var(--text-secondary);
+  margin: 0 0 24px 0;
+  max-width: 250px;
+}
+
+.fab-container {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  z-index: 500;
+}
+
+.fab {
+  width: 56px;
+  height: 56px;
+  border-radius: 50% !important;
+  font-size: 1.5rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}

@@ -1,0 +1,262 @@
+.dice-roller-page .roll-result-section {
+  margin-bottom: 24px;
+}
+
+.roll-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 140px;
+  background: var(--surface-color);
+  border: 2px solid var(--border-color);
+  border-radius: 20px;
+  padding: 20px;
+  transition: all 0.3s ease;
+}
+
+.roll-display.rolling {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+}
+
+.roll-display.critical-success {
+  border-color: var(--success-color);
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.roll-display.critical-failure {
+  border-color: var(--danger-color);
+  background: rgba(244, 67, 54, 0.1);
+}
+
+.rolling-animation {
+  font-size: 4rem;
+  animation: roll 0.5s ease infinite;
+}
+
+@keyframes roll {
+  0%, 100% { transform: rotate(0deg) scale(1); }
+  25% { transform: rotate(10deg) scale(1.1); }
+  50% { transform: rotate(-10deg) scale(1); }
+  75% { transform: rotate(5deg) scale(1.1); }
+}
+
+.roll-total {
+  font-size: 4rem;
+  font-weight: 700;
+  color: var(--text-primary);
+  line-height: 1;
+}
+
+.roll-details {
+  font-size: 1rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.roll-critical {
+  font-size: 1.1rem;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+.critical-success .roll-critical {
+  color: var(--success-color);
+}
+
+.critical-failure .roll-critical {
+  color: var(--danger-color);
+}
+
+.roll-placeholder {
+  font-size: 1.2rem;
+  color: var(--text-secondary);
+}
+
+.dice-selection {
+  margin-bottom: 24px;
+}
+
+.dice-selection h3 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.dice-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+}
+
+.roll-config {
+  background: var(--surface-color);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.config-row:last-child {
+  border-bottom: none;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+}
+
+.config-row label {
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.config-controls {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.config-controls button {
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: var(--hover-color);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.config-controls button:active {
+  background: var(--border-color);
+}
+
+.config-controls span {
+  min-width: 40px;
+  text-align: center;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.roll-type-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.roll-type-buttons button {
+  flex: 1;
+  padding: 10px 8px;
+  border: 1px solid var(--border-color);
+  background: var(--background-color);
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.roll-type-buttons button.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.roll-action {
+  margin-bottom: 24px;
+}
+
+.roll-history {
+  background: var(--surface-color);
+  border-radius: 16px;
+  padding: 16px;
+}
+
+.history-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.history-header h3 {
+  font-size: 1rem;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.clear-history {
+  background: none;
+  border: none;
+  color: var(--danger-color);
+  font-size: 0.9rem;
+  cursor: pointer;
+}
+
+.history-empty {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 20px;
+}
+
+.history-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: var(--background-color);
+  border-radius: 8px;
+  font-size: 0.9rem;
+  flex-wrap: wrap;
+}
+
+.history-item.success {
+  border-left: 3px solid var(--success-color);
+}
+
+.history-item.failure {
+  border-left: 3px solid var(--danger-color);
+}
+
+.history-dice {
+  font-weight: 600;
+  color: var(--primary-color);
+}
+
+.history-rolls {
+  color: var(--text-secondary);
+}
+
+.history-mod {
+  color: var(--text-secondary);
+}
+
+.history-total {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.history-type {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-left: auto;
+}

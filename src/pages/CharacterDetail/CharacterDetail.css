@@ -1,0 +1,297 @@
+.character-detail-page .character-header {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding-bottom: 16px;
+  border-bottom: 1px solid var(--border-color);
+  margin-bottom: 16px;
+}
+
+.character-avatar {
+  width: 64px;
+  height: 64px;
+  font-size: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-color);
+  border-radius: 16px;
+  border: 2px solid var(--border-color);
+}
+
+.character-meta h2 {
+  font-size: 1.3rem;
+  margin: 0 0 4px 0;
+  color: var(--text-primary);
+}
+
+.character-meta p {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0;
+}
+
+.vitals-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.vital-card {
+  background: var(--surface-color);
+  border-radius: 12px;
+  padding: 12px;
+  border: 1px solid var(--border-color);
+}
+
+.vital-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.vital-label {
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.vital-value {
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.vital-bar {
+  height: 8px;
+  background: var(--background-color);
+  border-radius: 4px;
+  overflow: hidden;
+  margin-bottom: 8px;
+}
+
+.vital-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.3s ease;
+}
+
+.hp-fill {
+  background: linear-gradient(90deg, var(--danger-color), var(--success-color));
+}
+
+.mp-fill {
+  background: var(--primary-color);
+}
+
+.vital-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.vital-controls button {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: var(--hover-color);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.vital-controls button:active {
+  background: var(--border-color);
+}
+
+.attributes-section {
+  margin-bottom: 16px;
+}
+
+.attributes-row {
+  display: grid;
+  grid-template-columns: repeat(6, 1fr);
+  gap: 8px;
+}
+
+.attribute-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 8px 4px;
+}
+
+.attr-label {
+  font-size: 0.7rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.attr-value {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.attr-mod {
+  font-size: 0.8rem;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.combat-stats {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.stat-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.stat-label {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+.stat-value {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.tabs-nav {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 16px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 16px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 20px;
+  color: var(--text-secondary);
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.2s ease;
+}
+
+.tab-btn.active {
+  background: var(--primary-color);
+  border-color: var(--primary-color);
+  color: white;
+}
+
+.tab-content {
+  min-height: 200px;
+  margin-bottom: 16px;
+}
+
+.tab-info {
+  color: var(--text-secondary);
+  text-align: center;
+  padding: 24px;
+}
+
+.skills-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.skill-item {
+  display: flex;
+  align-items: center;
+  padding: 10px 12px;
+  background: var(--surface-color);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.skill-item.trained {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+}
+
+.skill-name {
+  flex: 1;
+  font-weight: 500;
+  color: var(--text-primary);
+}
+
+.skill-attr {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-right: 12px;
+}
+
+.skill-bonus {
+  font-weight: 700;
+  color: var(--primary-color);
+  min-width: 32px;
+  text-align: right;
+}
+
+.inventory-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.inventory-preview {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.inventory-preview li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border-color);
+  color: var(--text-secondary);
+}
+
+.inventory-preview li.more {
+  color: var(--primary-color);
+  font-style: italic;
+}
+
+.notes-input {
+  width: 100%;
+  min-height: 150px;
+  padding: 12px;
+  font-family: inherit;
+  font-size: 1rem;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  resize: vertical;
+}
+
+.notes-input:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.quick-actions-bar {
+  padding: 16px 0;
+}

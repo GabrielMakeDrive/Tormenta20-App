@@ -1,0 +1,137 @@
+.character-create-page .form-section {
+  margin-bottom: 24px;
+}
+
+.form-label {
+  display: block;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.form-input,
+.form-select {
+  width: 100%;
+  padding: 14px 16px;
+  font-size: 1rem;
+  font-family: inherit;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  color: var(--text-primary);
+  transition: border-color 0.2s ease;
+}
+
+.form-input:focus,
+.form-select:focus {
+  outline: none;
+  border-color: var(--primary-color);
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 16px center;
+  padding-right: 40px;
+}
+
+.icon-picker {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.icon-option {
+  width: 48px;
+  height: 48px;
+  font-size: 1.5rem;
+  background: var(--surface-color);
+  border: 2px solid var(--border-color);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.icon-option.selected {
+  border-color: var(--primary-color);
+  background: var(--primary-light);
+}
+
+.icon-option:active {
+  transform: scale(0.95);
+}
+
+.attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.attribute-input {
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  text-align: center;
+}
+
+.attribute-input label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+}
+
+.attribute-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.attr-btn {
+  width: 32px;
+  height: 32px;
+  border: none;
+  background: var(--hover-color);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.attr-btn:active {
+  background: var(--border-color);
+}
+
+.attribute-controls input {
+  width: 48px;
+  text-align: center;
+  font-size: 1.2rem;
+  font-weight: 600;
+  padding: 4px;
+  border: none;
+  background: transparent;
+  color: var(--text-primary);
+}
+
+.attribute-controls input:focus {
+  outline: none;
+}
+
+.modifier {
+  display: block;
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  margin-top: 4px;
+  font-weight: 600;
+}
+
+.form-actions {
+  padding: 16px 0;
+  margin-top: 16px;
+}

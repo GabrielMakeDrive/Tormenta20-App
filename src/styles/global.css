@@ -1,0 +1,249 @@
+/* ============================================
+   CSS Global - Tormenta 20 App
+   Sistema de Design Mobile-First
+   ============================================ */
+
+/* Reset e Box Sizing */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* Variáveis CSS - Tema Escuro (padrão) */
+:root {
+  /* Cores Primárias */
+  --primary-color: #7c4dff;
+  --primary-dark: #651fff;
+  --primary-light: rgba(124, 77, 255, 0.15);
+  
+  /* Cores de Fundo */
+  --background-color: #121212;
+  --surface-color: #1e1e1e;
+  --hover-color: #2a2a2a;
+  
+  /* Cores de Texto */
+  --text-primary: #ffffff;
+  --text-secondary: #9e9e9e;
+  
+  /* Cores de Borda */
+  --border-color: #333333;
+  
+  /* Cores de Status */
+  --success-color: #4caf50;
+  --danger-color: #f44336;
+  --warning-color: #ff9800;
+  --info-color: #2196f3;
+  
+  /* Espaçamentos */
+  --spacing-xs: 4px;
+  --spacing-sm: 8px;
+  --spacing-md: 16px;
+  --spacing-lg: 24px;
+  --spacing-xl: 32px;
+  
+  /* Border Radius */
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 24px;
+  
+  /* Tipografia */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+  
+  /* Safe Areas */
+  --safe-area-top: env(safe-area-inset-top);
+  --safe-area-bottom: env(safe-area-inset-bottom);
+}
+
+/* Tema Claro */
+[data-theme="light"] {
+  --background-color: #f5f5f5;
+  --surface-color: #ffffff;
+  --hover-color: #eeeeee;
+  --text-primary: #212121;
+  --text-secondary: #757575;
+  --border-color: #e0e0e0;
+}
+
+/* HTML e Body */
+html {
+  font-size: 16px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  font-family: var(--font-family);
+  background-color: var(--background-color);
+  color: var(--text-primary);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
+}
+
+/* Prevenção de scroll bounce no iOS */
+html, body {
+  overscroll-behavior: none;
+}
+
+/* App Container */
+#root {
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Layout de Página */
+.page {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+
+.page-content {
+  flex: 1;
+  padding: var(--spacing-md);
+  padding-top: calc(70px + var(--safe-area-top));
+  padding-bottom: calc(80px + var(--safe-area-bottom));
+  overflow-y: auto;
+}
+
+/* Scrollbar Customizada */
+::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Seleção de Texto */
+::selection {
+  background: var(--primary-color);
+  color: white;
+}
+
+/* Links */
+a {
+  color: var(--primary-color);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+/* Inputs */
+input, textarea, select {
+  font-family: inherit;
+  font-size: 1rem;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+}
+
+/* Buttons */
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+/* Imagens */
+img {
+  max-width: 100%;
+  height: auto;
+  display: block;
+}
+
+/* Lists */
+ul, ol {
+  list-style: none;
+}
+
+/* Utilitários */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.text-center {
+  text-align: center;
+}
+
+.text-left {
+  text-align: left;
+}
+
+.text-right {
+  text-align: right;
+}
+
+/* Animações */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes slideUp {
+  from { transform: translateY(20px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Utilitários de Animação */
+.animate-fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease;
+}
+
+/* Media Queries para responsividade */
+@media (min-width: 600px) {
+  .page-content {
+    max-width: 600px;
+    margin: 0 auto;
+  }
+}
+
+/* Touch Action para melhor resposta ao toque */
+button, a, input, textarea, select {
+  touch-action: manipulation;
+}
+
+/* Prevenção de destaque no tap em mobile */
+* {
+  -webkit-tap-highlight-color: transparent;
+}

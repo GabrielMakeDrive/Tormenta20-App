@@ -1,0 +1,75 @@
+.character-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  background: var(--surface-color);
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.character-card:active {
+  transform: scale(0.98);
+  background: var(--hover-color);
+}
+
+.character-icon {
+  width: 56px;
+  height: 56px;
+  font-size: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--background-color);
+  border-radius: 12px;
+  flex-shrink: 0;
+}
+
+.character-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.character-name {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0 0 4px 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.character-details {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin: 0 0 8px 0;
+}
+
+.character-hp-bar {
+  height: 6px;
+  background: var(--background-color);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+
+.hp-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--danger-color), var(--success-color));
+  border-radius: 3px;
+  transition: width 0.3s ease;
+}
+
+.hp-text {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.character-arrow {
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  flex-shrink: 0;
+}
