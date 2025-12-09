@@ -1,7 +1,7 @@
-# Componentes Reutilizáveis - Instruções
 ---
 applyTo: "**/components/**"
 ---
+# Componentes Reutilizáveis - Instruções
 
 ## Propósito
 Biblioteca de componentes UI reutilizáveis que garantem consistência visual e comportamental em todo o aplicativo.

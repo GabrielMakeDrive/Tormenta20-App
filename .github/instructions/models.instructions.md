@@ -1,7 +1,7 @@
-# Models - Instruções
 ---
 applyTo: "**/models/**"
 ---
+# Models - Instruções
 
 ## Propósito
 Definição de estruturas de dados, constantes e funções utilitárias para o sistema Tormenta 20.

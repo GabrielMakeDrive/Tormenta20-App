@@ -1,7 +1,7 @@
-# Services - Instruções
 ---
 applyTo: "**/services/**"
 ---
+# Services - Instruções
 
 ## Propósito
 Camada de serviços para persistência de dados e operações de I/O.

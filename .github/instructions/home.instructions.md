@@ -1,7 +1,7 @@
-# Página Home - Instruções
 ---
 applyTo: "**/pages/Home/**"
 ---
+# Página Home - Instruções
 
 ## Propósito
 Tela inicial do aplicativo que apresenta o app ao usuário e oferece acesso rápido às principais funcionalidades.

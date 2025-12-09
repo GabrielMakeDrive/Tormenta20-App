@@ -1,7 +1,7 @@
-# Rolador de Dados - Instruções
 ---
 applyTo: "**/pages/DiceRoller/**"
 ---
+# Rolador de Dados - Instruções
 
 ## Propósito
 Ferramenta para rolagem de dados durante o jogo, com suporte a todos os tipos de dados do sistema e modificadores.

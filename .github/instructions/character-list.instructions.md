@@ -1,7 +1,7 @@
-# Lista de Personagens - Instruções
 ---
 applyTo: "**/pages/CharacterList/**"
 ---
+# Lista de Personagens - Instruções
 
 ## Propósito
 Exibir todos os personagens criados pelo usuário, permitindo visualização, acesso e exclusão.

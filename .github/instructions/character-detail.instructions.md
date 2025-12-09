@@ -1,7 +1,7 @@
-# Detalhes do Personagem - Instruções
 ---
 applyTo: "**/pages/CharacterDetail/**"
 ---
+# Detalhes do Personagem - Instruções
 
 ## Propósito
 Tela principal de visualização e gestão do personagem durante o jogo, com acesso a todas as informações e funcionalidades de combate.

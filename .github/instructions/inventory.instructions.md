@@ -1,7 +1,7 @@
-# Inventário - Instruções
 ---
 applyTo: "**/pages/Inventory/**"
 ---
+# Inventário - Instruções
 
 ## Propósito
 Gestão completa do inventário do personagem com CRUD de itens, filtros e estatísticas.

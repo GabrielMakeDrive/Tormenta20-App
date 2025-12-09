@@ -1,7 +1,7 @@
-# Configurações - Instruções
 ---
 applyTo: "**/pages/Settings/**"
 ---
+# Configurações - Instruções
 
 ## Propósito
 Tela de configurações do aplicativo com opções de personalização, backup de dados e informações do app.

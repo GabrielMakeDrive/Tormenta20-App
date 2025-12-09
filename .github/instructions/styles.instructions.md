@@ -1,7 +1,7 @@
-# Estilos Globais - Instruções
 ---
 applyTo: "**/styles/**"
 ---
+# Estilos Globais - Instruções
 
 ## Propósito
 Sistema de design consistente para todo o aplicativo, com tema escuro padrão e variáveis CSS reutilizáveis.
