@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "private": true,
   "description": "Fichas digitais para o sistema Tormenta 20",
+  "homepage": "https://gabrielmakedrive.github.io/Tormenta20-App",
   "dependencies": {
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
