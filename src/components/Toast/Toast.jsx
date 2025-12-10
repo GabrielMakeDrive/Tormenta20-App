@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './Toast.css';
 
-function Toast({ message, type = 'info', duration = 100000000, onClose }) {
+function Toast({ message, type = 'info', duration = 3000, onClose }) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
@@ -13,16 +13,16 @@ function Toast({ message, type = 'info', duration = 100000000, onClose }) {
     return () => clearTimeout(timer);
   }, [duration, onClose]);
 
-  const icons = {
-    success: '✓',
-    error: '✕',
-    info: 'ℹ',
-    warning: '⚠',
+  const iconClasses = {
+    success: 'bi bi-check-circle',
+    error: 'bi bi-x-circle',
+    info: 'bi bi-info-circle',
+    warning: 'bi bi-exclamation-triangle',
   };
 
   return (
     <div className={`toast toast-${type} ${visible ? 'visible' : ''}`}>
-      <span className="toast-icon">{icons[type]}</span>
+      <i className={`toast-icon ${iconClasses[type]}`}></i>
       <span className="toast-message">{message}</span>
     </div>
   );
