@@ -9,63 +9,36 @@ Definição de estruturas de dados, constantes e funções utilitárias para o s
 ## Localização
 `src/models/`
 
+## Padrão de Modelos
+- Cada arquivo define uma classe principal (ex.: `Character`, `InventoryItem`, `RollRecord`).
+- Toda classe expõe `toJSON()` e `static fromJSON()` para normalizar escrita/leitura.
+- Sempre exporte helpers triplos: `createX`, `serializeX`, `deserializeX` (X = tipo do modelo).
+- Preferir funções auxiliares internas para normalizar números, textos e booleanos.
+- A API externa continua utilizando objetos JavaScript simples; as classes garantem consistência dos dados.
+
 ---
 
 ## Character.js
-Modelo principal de personagem/ficha.
+Modelo principal de personagem/ficha implementado via classe `Character`.
 
-### createCharacter(data)
-Factory function que cria um novo personagem.
+### Character
+- Construtor recebe `data` e normaliza tipos (atributos defaults em 10, PV=10, PM=0, etc.).
+- Métodos: `toJSON()` (clona e serializa), `static fromJSON()` (recria instância).
 
-```javascript
-{
-  id: string,           // UUID único
-  name: string,         // Nome do personagem
-  icon: string,         // Emoji representativo
-  level: number,        // 1-20
-  experience: number,   // XP acumulada
-  
-  race: object|null,    // Referência à raça
-  characterClass: object|null, // Referência à classe
-  
-  attributes: {
-    forca: number,
-    destreza: number,
-    constituicao: number,
-    inteligencia: number,
-    sabedoria: number,
-    carisma: number
-  },
-  
-  hp: { current, max, temp },
-  mp: { current, max },
-  
-  defense: number,
-  movement: number,     // metros
-  
-  skills: string[],     // IDs de perícias treinadas
-  talents: array,       // Poderes/talentos
-  inventory: array,     // Itens
-  money: number,        // Tibares (T$)
-  notes: string,        // Anotações livres
-  
-  createdAt: ISO string,
-  updatedAt: ISO string
-}
-```
+### Helpers
+- `createCharacter(data)` retorna `new Character(data)`.
+- `serializeCharacter(character)` garante um objeto pronto para persistência.
+- `deserializeCharacter(payload)` transforma JSON armazenado em instância.
+- `calculateMaxHp(character)` e `calculateMaxMp(character)` centralizam os cálculos de PV/PM derivados (considerando nível, raça e classe).
 
-### getAttributeModifier(value)
-Calcula o modificador de atributo.
-```javascript
-// Fórmula D&D/T20
-modifier = Math.floor((value - 10) / 2)
+### HP (Pontos de Vida)
 
-// Exemplos:
-// 10 → +0
-// 14 → +2
-// 8  → -1
-// 18 → +4
-```
+- O objeto `hp` possui 3 campos:
+  - `current`: PV atuais do personagem;
+  - `max`: PV máximos, derivados do cálculo de classe/nível e modificador de Constituição;
+  - `temp`: Pontos de Vida temporários (PV temporários). Esses pontos são concedidos por magia/efeitos e servem para absorver dano antes dos `current` — não são restaurados por recuperação normal e podem expirar ou serem reduzidos por efeitos específicos.
+
+Recomenda-se utilizar `temp` para efeitos que concedam pontos extras temporários (escudos, magias etc.), mantendo claro ao usuário que esse valor não altera `max` e não é automaticamente restaurado.
 
 ### RACES
 Array com todas as 16 raças jogáveis.
@@ -98,7 +71,7 @@ Array com todas as 14 classes com estatísticas completas vindas do Tormenta Col
   proficiencies: ['armas marciais', 'armaduras pesadas', 'escudos']
 }
 ```
-> `hp.initial` se aplica ao 1º nível (PV = initial + Constituição) enquanto `hp.perLevel` define o ganho por nível adicional (perLevel + Constituição). As listas de perícias usam os IDs definidos em `SKILLS`.
+> `hp.initial` se aplica ao 1º nível (PV = initial + Constituição ajustada) enquanto `hp.perLevel` define o ganho por nível adicional (perLevel + Constituição). As listas de perícias usam os IDs definidos em `SKILLS`.
 
 ### SKILLS
 Array com todas as 29 perícias.
@@ -113,23 +86,16 @@ Array com todas as 29 perícias.
 ---
 
 ## InventoryItem.js
-Modelo de itens de inventário.
+Modelo de itens de inventário implementado via classe `InventoryItem`.
 
-### createInventoryItem(data)
-```javascript
-{
-  id: string,
-  name: string,
-  description: string,
-  quantity: number,
-  weight: number,       // kg
-  price: number,        // T$
-  type: string,         // weapon, armor, etc.
-  rarity: string,       // common, rare, etc.
-  equipped: boolean,
-  notes: string
-}
-```
+### InventoryItem
+- Construtor normaliza texto, números e booleanos (quantidade mínima 0, peso/valor >= 0, etc.).
+- Métodos: `toJSON()` e `static fromJSON()` análogos ao modelo de personagem.
+
+### Helpers
+- `createInventoryItem(data)` retorna instância.
+- `serializeInventoryItem(item)` e `deserializeInventoryItem(payload)` padronizam escrita/leitura.
+- `calculateTotalWeight(items)` e `calculateTotalValue(items)` respeitam os números normalizados.
 
 ### ITEM_TYPES
 ```javascript
@@ -163,46 +129,16 @@ calculateTotalValue(items)   // Soma preço × quantidade
 ---
 
 ## DiceRoll.js
-Modelo de rolagem de dados.
+Modelo de rolagem implementado via classe `RollRecord`.
 
-### DICE_TYPES
-```javascript
-[
-  { id: 'd4', sides: 4 },
-  { id: 'd6', sides: 6 },
-  { id: 'd8', sides: 8 },
-  { id: 'd10', sides: 10 },
-  { id: 'd12', sides: 12 },
-  { id: 'd20', sides: 20 },
-  { id: 'd100', sides: 100 }
-]
-```
+### RollRecord
+- Construtor normaliza número de dados, modificador, lista de rolagens e flags de crítico.
+- Métodos: `toJSON()` e `static fromJSON()` para persistência do histórico.
 
-### Funções de Rolagem
-```javascript
-rollDie(sides)              // Rola 1 dado
-rollDice(sides, count)      // Rola N dados
-rollWithAdvantage()         // 2d20, maior
-rollWithDisadvantage()      // 2d20, menor
-performRoll(type, count, mod, rollType)  // Rolagem completa
-```
-
-### createRollRecord(data)
-```javascript
-{
-  id: string,
-  timestamp: ISO string,
-  diceType: string,
-  diceCount: number,
-  modifier: number,
-  rolls: number[],
-  total: number,
-  description: string,
-  rollType: string,         // normal, advantage, disadvantage
-  isCriticalSuccess: boolean,
-  isCriticalFailure: boolean
-}
-```
+### Helpers
+- `createRollRecord(data)` cria instância.
+- `serializeRollRecord(record)` / `deserializeRollRecord(payload)` padronizam armazenamento.
+- Mantém `DICE_TYPES`, `rollDie`, `rollDice`, `rollWithAdvantage`, `rollWithDisadvantage`, `performRoll`, `interpretD20Result`.
 
 ### interpretD20Result(naturalRoll)
 ```javascript

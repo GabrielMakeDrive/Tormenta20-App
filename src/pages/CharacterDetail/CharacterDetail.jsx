@@ -7,7 +7,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header, Button, Toast } from '../../components';
 import { getCharacterById, saveCharacter } from '../../services';
-import { getAttributeModifier, SKILLS } from '../../models';
+import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition } from '../../models';
 import './CharacterDetail.css';
 
 const formatAttributeValue = (value = 0) => (value > 0 ? `+${value}` : `${value}`);
@@ -21,6 +21,15 @@ const getRaceAdjustment = (race, attrKey) => {
   return bonus + penalty;
 };
 
+const ATTRIBUTE_LABELS = {
+  forca: 'FOR',
+  destreza: 'DES',
+  constituicao: 'CON',
+  inteligencia: 'INT',
+  sabedoria: 'SAB',
+  carisma: 'CAR',
+};
+
 function CharacterDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -32,6 +41,7 @@ function CharacterDetail() {
     const loaded = getCharacterById(id);
     if (loaded) {
       setCharacter(loaded);
+      console.log('CharacterDetail data', loaded);
     } else {
       navigate('/characters');
     }
@@ -39,16 +49,20 @@ function CharacterDetail() {
 
   const handleHpChange = (delta) => {
     if (!character) return;
-    const newHp = Math.max(0, Math.min(character.hp.max, character.hp.current + delta));
-    const updated = { ...character, hp: { ...character.hp, current: newHp } };
+    const maxHp = calculateMaxHp(character);
+    const current = character.hp?.current ?? 0;
+    const newHp = Math.max(0, Math.min(maxHp, current + delta));
+    const updated = { ...character, hp: { ...character.hp, current: newHp, max: maxHp } };
     setCharacter(updated);
     saveCharacter(updated);
   };
 
   const handleMpChange = (delta) => {
     if (!character) return;
-    const newMp = Math.max(0, Math.min(character.mp.max, character.mp.current + delta));
-    const updated = { ...character, mp: { ...character.mp, current: newMp } };
+    const maxMp = calculateMaxMp(character);
+    const current = character.mp?.current ?? 0;
+    const newMp = Math.max(0, Math.min(maxMp, current + delta));
+    const updated = { ...character, mp: { ...character.mp, current: newMp, max: maxMp } };
     setCharacter(updated);
     saveCharacter(updated);
   };
@@ -57,14 +71,14 @@ function CharacterDetail() {
     return <div className="page">Carregando...</div>;
   }
 
-  const attributeLabels = {
-    forca: 'FOR',
-    destreza: 'DES',
-    constituicao: 'CON',
-    inteligencia: 'INT',
-    sabedoria: 'SAB',
-    carisma: 'CAR',
-  };
+  const classDefinition = getCharacterClassDefinition(character);
+  const raceDefinition = getRaceDefinition(character);
+  const maxHp = calculateMaxHp(character);
+  const maxMp = calculateMaxMp(character);
+  const currentHp = Math.max(0, Math.min(character.hp?.current ?? 0, maxHp));
+  const currentMp = Math.max(0, Math.min(character.mp?.current ?? 0, maxMp));
+  const hpPercentage = maxHp > 0 ? (currentHp / maxHp) * 100 : 0;
+  const mpPercentage = maxMp > 0 ? (currentMp / maxMp) * 100 : 0;
 
   const tabs = [
     { id: 'stats', label: 'Status', icon: '📊' },
@@ -92,7 +106,7 @@ function CharacterDetail() {
           <div className="character-meta">
             <h2>{character.name}</h2>
             <p>
-              {character.race?.name || 'Raça'} • {character.characterClass?.name || 'Classe'} • Nível {character.level}
+              {raceDefinition?.name || 'Raça'} • {classDefinition?.name || 'Classe'} • Nível {character.level}
             </p>
           </div>
         </section>
@@ -102,12 +116,12 @@ function CharacterDetail() {
           <div className="vital-card hp-card">
             <div className="vital-header">
               <span className="vital-label">❤️ PV</span>
-              <span className="vital-value">{character.hp.current}/{character.hp.max}</span>
+              <span className="vital-value">{currentHp}/{maxHp}</span>
             </div>
             <div className="vital-bar">
               <div 
                 className="vital-fill hp-fill" 
-                style={{ width: `${(character.hp.current / character.hp.max) * 100}%` }}
+                style={{ width: `${hpPercentage}%` }}
               />
             </div>
             <div className="vital-controls">
@@ -119,12 +133,12 @@ function CharacterDetail() {
           <div className="vital-card mp-card">
             <div className="vital-header">
               <span className="vital-label">💧 PM</span>
-              <span className="vital-value">{character.mp.current}/{character.mp.max}</span>
+              <span className="vital-value">{currentMp}/{maxMp}</span>
             </div>
             <div className="vital-bar">
               <div 
                 className="vital-fill mp-fill" 
-                style={{ width: `${character.mp.max > 0 ? (character.mp.current / character.mp.max) * 100 : 0}%` }}
+                style={{ width: `${mpPercentage}%` }}
               />
             </div>
             <div className="vital-controls">
@@ -137,17 +151,14 @@ function CharacterDetail() {
         {/* Atributos */}
         <section className="attributes-section">
           <div className="attributes-row">
-            {Object.keys(attributeLabels).map((attr) => {
+            {Object.keys(ATTRIBUTE_LABELS).map((attr) => {
               const baseValue = character.attributes?.[attr] ?? 0;
-              const adjustedValue = baseValue + getRaceAdjustment(character.race, attr);
-              const modifier = getAttributeModifier(adjustedValue);
+              const adjustedValue = baseValue + getRaceAdjustment(raceDefinition, attr);
               return (
                 <div key={attr} className="attribute-box">
-                  <span className="attr-label">{attributeLabels[attr]}</span>
-                  <span className="attr-value">{formatAttributeValue(baseValue)}</span>
-                  <span className="attr-mod">
-                    Total {modifier >= 0 ? '+' : ''}{modifier}
-                  </span>
+                  <span className="attr-label">{ATTRIBUTE_LABELS[attr]}</span>
+                  {/* Mostrar somente o valor total (com ajuste racial) — não exibir o valor base separado */}
+                  <span className="attr-value">{formatAttributeValue(adjustedValue)}</span>
                 </div>
               );
             })}
@@ -197,15 +208,14 @@ function CharacterDetail() {
               <div className="skills-list">
                 {SKILLS.map((skill) => {
                   const baseAttr = character.attributes?.[skill.attr] ?? 0;
-                  const adjustedAttr = baseAttr + getRaceAdjustment(character.race, skill.attr);
-                  const mod = getAttributeModifier(adjustedAttr);
+                  const adjustedAttr = baseAttr + getRaceAdjustment(raceDefinition, skill.attr);
                   const trained = character.skills?.includes(skill.id);
                   const bonus = trained ? mod + Math.floor(character.level / 2) + 2 : mod;
                   
                   return (
                     <div key={skill.id} className={`skill-item ${trained ? 'trained' : ''}`}>
                       <span className="skill-name">{skill.name}</span>
-                      <span className="skill-attr">({attributeLabels[skill.attr]})</span>
+                      <span className="skill-attr">({ATTRIBUTE_LABELS[skill.attr]})</span>
                       <span className="skill-bonus">
                         {bonus >= 0 ? '+' : ''}{bonus}
                       </span>

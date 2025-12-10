@@ -178,6 +178,7 @@ function App() {
           <Route path="/Tormenta20-App" element={<Home />} />
           <Route path="/characters" element={<CharacterList />} />
           <Route path="/characters/new" element={<CharacterCreate />} />
+          <Route path="/characters/:id/edit" element={<CharacterCreate mode="edit" />} />
           <Route path="/characters/:id" element={<CharacterDetail />} />
           <Route path="/characters/:id/inventory" element={<Inventory />} />
           <Route path="/dice" element={<DiceRoller />} />

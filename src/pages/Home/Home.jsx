@@ -8,22 +8,21 @@ import { Header, Button } from '../../components';
 import { loadCharacters } from '../../services';
 import './Home.css';
 
-const getFavoriteCharacterName = (characters) => {
+const getFavoriteCharacter = (characters) => {
   if (!Array.isArray(characters) || characters.length === 0) {
     return null;
   }
 
   if (characters.length === 1) {
-    return characters[0].name;
+    return characters[0];
   }
 
-  const favorite = characters.find((char) => char.isFavorite);
-  return favorite ? favorite.name : null;
+  return characters.find((char) => char.isFavorite) || null;
 };
 
 function Home() {
   const navigate = useNavigate();
-  const [favoriteName, setFavoriteName] = useState(null);
+  const [favoriteCharacter, setFavoriteCharacter] = useState(null);
 
   const quickActions = [
     { icon: '📋', label: 'Criar Ficha', path: '/characters/new' },
@@ -33,10 +32,18 @@ function Home() {
 
   useEffect(() => {
     const characters = loadCharacters();
-    setFavoriteName(getFavoriteCharacterName(characters));
+    setFavoriteCharacter(getFavoriteCharacter(characters));
   }, []);
 
-  const welcomeName = favoriteName || 'Jogador';
+  const welcomeName = favoriteCharacter?.name || 'Jogador';
+  const ctaLabel = favoriteCharacter ? '👀 Ver meu Personagem' : '➕ Criar Primeiro Personagem';
+  const handleCtaClick = () => {
+    if (favoriteCharacter) {
+      navigate(`/characters/${favoriteCharacter.id}`);
+    } else {
+      navigate('/characters/new');
+    }
+  };
 
   return (
     <div className="page home-page">
@@ -83,9 +90,9 @@ function Home() {
             variant="primary" 
             size="large" 
             fullWidth
-            onClick={() => navigate('/characters/new')}
+            onClick={handleCtaClick}
           >
-            ➕ Criar Primeiro Personagem
+            {ctaLabel}
           </Button>
         </div>
       </main>

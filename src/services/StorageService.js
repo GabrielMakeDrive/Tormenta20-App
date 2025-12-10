@@ -2,6 +2,12 @@
  * Serviço de Armazenamento Local usando Storage API
  * Fornece persistência de dados para o app offline-first
  */
+import {
+  serializeCharacter,
+  deserializeCharacter,
+  serializeRollRecord,
+  deserializeRollRecord,
+} from '../models';
 
 const STORAGE_KEYS = {
   CHARACTERS: 'tormenta20_characters',
@@ -82,18 +88,23 @@ export const removeData = (key) => {
 
 // ============ CHARACTERS ============
 
+const serializeCharacterList = (characters = []) => characters.map((character) => serializeCharacter(character));
+const deserializeCharacterList = (payload = []) =>
+  (Array.isArray(payload) ? payload : []).map((character) => deserializeCharacter(character));
+
 /**
  * Salva lista de personagens
  */
-export const saveCharacters = (characters) => {
-  return saveData(STORAGE_KEYS.CHARACTERS, characters);
+export const saveCharacters = (characters = []) => {
+  return saveData(STORAGE_KEYS.CHARACTERS, serializeCharacterList(characters));
 };
 
 /**
  * Carrega lista de personagens
  */
 export const loadCharacters = () => {
-  return loadData(STORAGE_KEYS.CHARACTERS, []);
+  const stored = loadData(STORAGE_KEYS.CHARACTERS, []);
+  return deserializeCharacterList(stored || []);
 };
 
 /**
@@ -102,18 +113,17 @@ export const loadCharacters = () => {
 export const saveCharacter = (character) => {
   const characters = loadCharacters();
   const index = characters.findIndex(c => c.id === character.id);
-  
-  const updatedCharacter = {
-    ...character,
+  const normalizedCharacter = deserializeCharacter({
+    ...serializeCharacter(character),
     updatedAt: new Date().toISOString(),
-  };
-  
+  });
+
   if (index >= 0) {
-    characters[index] = updatedCharacter;
+    characters[index] = normalizedCharacter;
   } else {
-    characters.push(updatedCharacter);
+    characters.push(normalizedCharacter);
   }
-  
+
   return saveCharacters(characters);
 };
 
@@ -137,21 +147,26 @@ export const getCharacterById = (characterId) => {
 // ============ ROLL HISTORY ============
 
 const MAX_ROLL_HISTORY = 50;
+const serializeRollList = (rolls = []) => rolls.map((roll) => serializeRollRecord(roll));
+const deserializeRollList = (payload = []) =>
+  (Array.isArray(payload) ? payload : []).map((roll) => deserializeRollRecord(roll));
 
 /**
  * Salva histórico de rolagens
  */
 export const saveRollHistory = (history) => {
   // Mantém apenas as últimas N rolagens
-  const trimmed = history.slice(-MAX_ROLL_HISTORY);
-  return saveData(STORAGE_KEYS.ROLL_HISTORY, trimmed);
+  const normalized = deserializeRollList(history);
+  const trimmed = normalized.slice(-MAX_ROLL_HISTORY);
+  return saveData(STORAGE_KEYS.ROLL_HISTORY, serializeRollList(trimmed));
 };
 
 /**
  * Carrega histórico de rolagens
  */
 export const loadRollHistory = () => {
-  return loadData(STORAGE_KEYS.ROLL_HISTORY, []);
+  const stored = loadData(STORAGE_KEYS.ROLL_HISTORY, []);
+  return deserializeRollList(stored || []);
 };
 
 /**
@@ -159,7 +174,7 @@ export const loadRollHistory = () => {
  */
 export const addRollToHistory = (roll) => {
   const history = loadRollHistory();
-  history.push(roll);
+  history.push(deserializeRollRecord(roll));
   return saveRollHistory(history);
 };
 
@@ -270,8 +285,8 @@ export const ensurePersistentStorage = async () => {
  */
 export const exportAllData = () => {
   return {
-    characters: loadCharacters(),
-    rollHistory: loadRollHistory(),
+    characters: serializeCharacterList(loadCharacters()),
+    rollHistory: serializeRollList(loadRollHistory()),
     settings: loadSettings(),
     exportedAt: new Date().toISOString(),
     version: '1.0.1',

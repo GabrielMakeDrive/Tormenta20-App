@@ -22,6 +22,7 @@ Tela principal de visualização e gestão do personagem durante o jogo, com ace
 - **PV**: Gradiente vermelho→verde baseado na porcentagem
 - **PM**: Azul sólido
 - Salva automaticamente ao alterar
+ - `PV.temp`: Também existe um campo de PV temporários (`temp`) no modelo. É recomendado exibir ou sinalizar estes pontos temporários (ex.: contorno, badge), pois eles absorvem dano antes do `current`. Atualmente a UI pode não fornecer controle separado para `temp`, mas o campo está disponível no modelo para ser usado por efeitos.
 
 ### 3. Atributos
 - Grid horizontal 6 colunas
@@ -68,7 +69,6 @@ Tela principal de visualização e gestão do personagem durante o jogo, com ace
 - `saveCharacter()` - Salva alterações
 
 ## Models
-- `getAttributeModifier()` - Calcula modificador
 - `SKILLS` - Lista de perícias
 
 ## Estilização

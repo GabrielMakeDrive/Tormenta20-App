@@ -11,6 +11,7 @@
   border-radius: 16px;
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 }
 
 .dice-button:active {

@@ -20,10 +20,11 @@ Ferramenta para rolagem de dados durante o jogo, com suporte a todos os tipos de
 - Mostra detalhamento: dados individuais + modificador
 
 ### 2. Seleção de Dados
-- Grid horizontal com todos os tipos:
+- Rolagem horizontal com todos os tipos:
   - d4, d6, d8, d10, d12, d20, d100
 - Botões com visual de dado
 - Seleção única destacada
+- Scroll suave
 
 ### 3. Configurações
 - **Quantidade**: 1-10 dados (controles +/-)

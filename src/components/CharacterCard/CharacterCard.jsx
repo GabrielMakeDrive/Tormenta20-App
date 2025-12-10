@@ -1,4 +1,10 @@
+/*
+ * CharacterCard resume rapidamente a ficha em listagens, utilizando os dados
+ * normalizados do model (incluindo o cálculo derivado de PV) para exibir ícone,
+ * texto e barra de status com consistência em toda a aplicação.
+ */
 import React from 'react';
+import { calculateMaxHp, getCharacterClassDefinition, getRaceDefinition } from '../../models';
 import './CharacterCard.css';
 
 const StarIcon = ({ filled }) => (
@@ -16,9 +22,12 @@ const StarIcon = ({ filled }) => (
 );
 
 function CharacterCard({ character, onClick, showFavoriteToggle = false, onFavoriteToggle }) {
-  const { name, icon, level, race, characterClass, hp, isFavorite } = character;
-  
-  const hpPercentage = hp?.max > 0 ? (hp.current / hp.max) * 100 : 100;
+  const { name, icon, level, hp, isFavorite } = character;
+  const maxHp = calculateMaxHp(character);
+  const currentHp = Math.max(0, Math.min(hp?.current ?? 0, maxHp));
+  const hpPercentage = maxHp > 0 ? (currentHp / maxHp) * 100 : 0;
+  const raceDefinition = getRaceDefinition(character);
+  const classDefinition = getCharacterClassDefinition(character);
   
   return (
     <div className="character-card" onClick={onClick}>
@@ -43,7 +52,7 @@ function CharacterCard({ character, onClick, showFavoriteToggle = false, onFavor
           )}
         </div>
         <p className="character-details">
-          {race?.name || 'Raça'} • {characterClass?.name || 'Classe'} • Nv. {level}
+          {raceDefinition?.name || 'Raça'} • {classDefinition?.name || 'Classe'} • Nv. {level}
         </p>
         <div className="character-hp-bar">
           <div 
@@ -51,7 +60,7 @@ function CharacterCard({ character, onClick, showFavoriteToggle = false, onFavor
             style={{ width: `${hpPercentage}%` }}
           />
         </div>
-        <span className="hp-text">{hp?.current || 0}/{hp?.max || 0} PV</span>
+        <span className="hp-text">{currentHp}/{maxHp} PV</span>
       </div>
       <div className="character-arrow">›</div>
     </div>

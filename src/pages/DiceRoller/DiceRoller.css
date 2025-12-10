@@ -88,9 +88,11 @@
 
 .dice-grid {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
   gap: 10px;
-  justify-content: center;
+  scroll-behavior: smooth;
+  padding: 0 10px;
 }
 
 .roll-config {
@@ -260,3 +262,221 @@
   color: var(--text-secondary);
   margin-left: auto;
 }
+
+/* Roll Mode Toggle */
+.roll-mode-toggle {
+  display: flex;
+  background: var(--surface-color);
+  border-radius: 12px;
+  padding: 4px;
+  margin-bottom: 16px;
+  border: 1px solid var(--border-color);
+}
+
+.roll-mode-toggle button {
+  flex: 1;
+  border: none;
+  background: transparent;
+  padding: 8px;
+  border-radius: 8px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.roll-mode-toggle button.active {
+  background: var(--primary-color);
+  color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Character Selector */
+.character-selector {
+  margin-bottom: 16px;
+}
+
+.character-selector select {
+  width: 100%;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--border-color);
+  background: var(--surface-color);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+/* Character Rolls */
+.character-rolls {
+  margin-bottom: 24px;
+}
+
+.attributes-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.attribute-roll-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.attribute-roll-btn:active {
+  transform: scale(0.95);
+  background: var(--background-color);
+}
+
+.attr-abbr {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  font-weight: 600;
+}
+
+.attr-mod {
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--primary-color);
+}
+
+.skills-list h3 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.skill-roll-btn {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 10px 12px;
+  cursor: pointer;
+  text-align: left;
+}
+
+.skill-roll-btn.trained {
+  border-color: var(--primary-color);
+  background: rgba(229, 57, 53, 0.05); /* Using primary color tint */
+}
+
+.skill-name {
+  font-size: 0.9rem;
+  color: var(--text-primary);
+}
+
+.skill-bonus {
+  font-weight: 700;
+  color: var(--text-secondary);
+}
+
+.skill-roll-btn.trained .skill-bonus {
+  color: var(--primary-color);
+}
+
+.no-character-msg {
+  text-align: center;
+  color: var(--text-secondary);
+  padding: 20px;
+}
+
+.roll-description {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--primary-color);
+  margin-top: 4px;
+}
+
+.history-desc {
+  font-size: 0.8rem;
+  color: var(--primary-color);
+  margin-top: 2px;
+  font-style: italic;
+}
+
+.history-main {
+  display: flex;
+  justify-content: space-between;
+  width: 100%;
+}
+
+.history-sub {
+  display: flex;
+  gap: 8px;
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+}
+
+
+/* Selection Collapsed State */
+.selection-collapsed {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.selection-collapsed:hover {
+  background: var(--background-color);
+  border-color: var(--primary-color);
+}
+
+.selection-label {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.selection-bonus {
+  font-weight: 700;
+  color: var(--primary-color);
+  font-size: 1.1rem;
+}
+
+.expand-icon {
+  color: var(--text-secondary);
+  transition: transform 0.2s;
+}
+
+.selection-collapsed:hover .expand-icon {
+  transform: rotate(180deg);
+}
+
+/* Attribute Display Adjustments */
+.attr-value {
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.attr-mod {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+}
+
