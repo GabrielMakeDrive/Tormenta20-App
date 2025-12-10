@@ -50,6 +50,12 @@ Formulário para criação de um novo personagem com todas as informações bás
 - PV inicial = (hp.initial + Constituição) + (nível - 1) x (hp.perLevel + Constituição) — usar o helper `calculateMaxHp()` do model para manter consistência (ele aplica ajustes raciais e trata valores em forma de modificador ou atributo completo).
 - PM inicial = mpPerLevel × nível — calculado via helper `calculateMaxMp()`.
 
+### 8. Perícias
+- **Perícias Obrigatórias**: São adicionadas automaticamente ao selecionar a classe e não podem ser removidas pelo usuário.
+- **Perícias de Escolha**: O usuário deve selecionar perícias adicionais conforme os grupos definidos pela classe (ex: "Escolha 4 entre...").
+- Validação impede salvar se o número correto de perícias não for selecionado para cada grupo.
+- Ao trocar de classe, as perícias são resetadas e as obrigatórias da nova classe são aplicadas.
+
 ## Componentes Utilizados
 - `Header` - Com botão voltar
 - `Button` - Submit do formulário

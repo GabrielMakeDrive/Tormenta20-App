@@ -271,6 +271,7 @@ function CharacterCreate({ mode = 'create' }) {
   };
 
   const handleChange = (field, value) => {
+    console.log('handleChange', field, value);
     setFormData(prev => {
       if (field === 'level') {
         return { ...prev, level: clampLevelValue(value) };
@@ -280,7 +281,11 @@ function CharacterCreate({ mode = 'create' }) {
         setExpandedGroup(null);
         setCompletedGroups(new Set());
         setSelectedSkillsByGroup({});
-        return { ...prev, [field]: value, skills: [], talents: [] };
+        
+        const newClassDef = CLASSES.find(c => c.id === value);
+        const mandatory = getMandatorySkills(newClassDef);
+
+        return { ...prev, [field]: value, skills: mandatory, talents: [] };
       }
       return { ...prev, [field]: value };
     });
@@ -307,6 +312,8 @@ function CharacterCreate({ mode = 'create' }) {
   };
 
   const handleSkillToggle = (skillId) => {
+    console.log('Toggling skill:', skillId);
+    console.log('Current selectedSkillsByGroup:', selectedSkillsByGroup);
     const groupIndex = getGroupForSkill(selectedClassDefinition, skillId);
     if (groupIndex === -1) return;
     
@@ -343,7 +350,9 @@ function CharacterCreate({ mode = 'create' }) {
       }
       
       // Update global skills
-      const newGlobalSkills = [...new Set(Object.values(newSelected).flatMap(set => Array.from(set || [])))];
+      const mandatory = getMandatorySkills(selectedClassDefinition);
+      const choiceSkills = Object.values(newSelected).flatMap(set => Array.from(set || []));
+      const newGlobalSkills = [...new Set([...mandatory, ...choiceSkills])];
       setFormData(prevForm => ({ ...prevForm, skills: newGlobalSkills }));
       
       return newSelected;
@@ -415,6 +424,8 @@ function CharacterCreate({ mode = 'create' }) {
     const currentSkills = formData.skills || [];
     const missingMandatory = mandatorySkills.filter(skill => !currentSkills.includes(skill));
     if (missingMandatory.length > 0) {
+      console.log('Missing mandatory skills:', missingMandatory);
+      console.log('Current skills:', currentSkills);
       setToast({ message: 'Todas as perícias obrigatórias devem estar selecionadas.', type: 'error' });
       return;
     }
@@ -702,7 +713,11 @@ function CharacterCreate({ mode = 'create' }) {
                                 setSelectedSkillsByGroup(prev => {
                                   const newSelected = { ...prev };
                                   delete newSelected[groupIndex];
-                                  const newGlobalSkills = [...new Set(Object.values(newSelected).flatMap(set => Array.from(set || [])))];
+                                  
+                                  const mandatory = getMandatorySkills(selectedClassDefinition);
+                                  const choiceSkills = Object.values(newSelected).flatMap(set => Array.from(set || []));
+                                  const newGlobalSkills = [...new Set([...mandatory, ...choiceSkills])];
+                                  
                                   setFormData(prevForm => ({ ...prevForm, skills: newGlobalSkills }));
                                   return newSelected;
                                 });
