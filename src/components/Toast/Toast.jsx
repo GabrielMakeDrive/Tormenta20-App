@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import './Toast.css';
 
-function Toast({ message, type = 'info', duration = 3000, onClose }) {
+function Toast({ message, type = 'info', duration = 100000000, onClose }) {
   const [visible, setVisible] = useState(true);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(onClose, 300);
+      setTimeout(onClose, duration);
     }, duration);
 
     return () => clearTimeout(timer);
