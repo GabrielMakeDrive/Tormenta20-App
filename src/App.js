@@ -79,6 +79,9 @@ function App() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
 
+  // Define o basename baseado no ambiente (produção usa /Tormenta20-App/)
+  const basename = process.env.NODE_ENV === 'production' ? '/Tormenta20-App' : '';
+
   useEffect(() => {
     // Solicita storage persistente logo na inicialização
     ensurePersistentStorage()
@@ -171,11 +174,10 @@ function App() {
   };
 
   return (
-    <Router>
+    <Router basename={basename}>
       <div className="app">
         <Routes>
           <Route path="/" element={<Home />} />
-          <Route path="/Tormenta20-App" element={<Home />} />
           <Route path="/characters" element={<CharacterList />} />
           <Route path="/characters/new" element={<CharacterCreate />} />
           <Route path="/characters/:id/edit" element={<CharacterCreate mode="edit" />} />

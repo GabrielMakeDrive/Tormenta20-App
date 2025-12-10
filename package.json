@@ -20,7 +20,7 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "deploy": "powershell -Command \"Copy-Item -Recurse -Force build docs\""
+    "deploy": "powershell -Command \"Copy-Item -Path 'build\\*' -Destination 'docs' -Recurse -Force\""
   },
   "eslintConfig": {
     "extends": [
