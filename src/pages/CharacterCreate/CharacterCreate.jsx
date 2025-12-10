@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Header, Button, Toast } from '../../components';
+import { Header, Button, Toast, Modal } from '../../components';
 import { 
   createCharacter, 
   RACES, 
@@ -16,7 +16,7 @@ import {
   calculateMaxHp,
   calculateMaxMp,
 } from '../../models';
-import { saveCharacter, getCharacterById } from '../../services';
+import { saveCharacter, getCharacterById, deleteCharacter } from '../../services';
 import './CharacterCreate.css';
 
 const CHARACTER_ICONS = ['⚔️', '🛡️', '🏹', '🔮', '📖', '🗡️', '🪓', '🎭', '👑', '🐉'];
@@ -141,6 +141,7 @@ function CharacterCreate({ mode = 'create' }) {
   const [expandedGroup, setExpandedGroup] = useState(null);
   const [completedGroups, setCompletedGroups] = useState(new Set());
   const [selectedSkillsByGroup, setSelectedSkillsByGroup] = useState({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     if (!isEditMode) {
@@ -349,6 +350,18 @@ function CharacterCreate({ mode = 'create' }) {
     });
   };
 
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (!originalCharacter) return;
+    deleteCharacter(originalCharacter.id);
+    setShowDeleteModal(false);
+    setToast({ message: 'Personagem excluído com sucesso!', type: 'success' });
+    setTimeout(() => navigate('/characters'), 800);
+  };
+
   const handleTalentToggle = (talentId) => {
     setFormData((prev) => {
       const currentTalents = prev.talents || [];
@@ -486,7 +499,19 @@ function CharacterCreate({ mode = 'create' }) {
 
   return (
     <div className="page character-create-page">
-      <Header title={headerTitle} showBack />
+      <Header 
+        title={headerTitle} 
+        showBack 
+        rightAction={isEditMode ? (
+          <button 
+            className="header-btn delete-btn" 
+            onClick={handleDelete}
+            title="Excluir Personagem"
+          >
+            🗑️
+          </button>
+        ) : null}
+      />
       
       <main className="page-content">
         {isEditMode && isLoading ? (
@@ -774,6 +799,22 @@ function CharacterCreate({ mode = 'create' }) {
           </form>
         )}
       </main>
+
+      <Modal 
+        isOpen={showDeleteModal} 
+        onClose={() => setShowDeleteModal(false)} 
+        title="Confirmar Exclusão"
+      >
+        <p>Tem certeza de que deseja excluir o personagem "{originalCharacter?.name}"? Esta ação não pode ser desfeita.</p>
+        <div className="modal-actions">
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={confirmDelete}>
+            Excluir
+          </Button>
+        </div>
+      </Modal>
 
       {toast && (
         <Toast 

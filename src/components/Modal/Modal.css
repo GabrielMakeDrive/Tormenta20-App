@@ -70,3 +70,10 @@
   overflow-y: auto;
   max-height: calc(85vh - 70px);
 }
+
+.modal-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
