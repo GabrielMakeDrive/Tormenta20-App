@@ -83,6 +83,9 @@ function App() {
   const basename = process.env.NODE_ENV === 'production' ? '/Tormenta20-App' : '';
 
   useEffect(() => {
+    // Log da versão na inicialização
+    console.log('Tormenta 20 App v' + process.env.REACT_APP_VERSION);
+
     // Solicita storage persistente logo na inicialização
     ensurePersistentStorage()
       .then(({ supported, persisted }) => {

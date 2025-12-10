@@ -18,7 +18,7 @@
   },
   "scripts": {
     "start": "react-scripts start",
-    "build": "react-scripts build",
+    "build": "cross-env REACT_APP_VERSION=$npm_package_version react-scripts build",
     "test": "react-scripts test",
     "deploy": "powershell -Command \"Copy-Item -Path 'build\\*' -Destination 'docs' -Recurse -Force\""
   },
