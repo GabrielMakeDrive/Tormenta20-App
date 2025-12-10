@@ -93,3 +93,40 @@ natural 1 = falha crítica
 - Animação de 500ms antes do resultado
 - Histórico reverte (mais recente primeiro)
 - Funciona offline
+
+## Modos de Rolagem
+
+### Modo Livre
+- Seleção manual de tipo de dado, quantidade e modificador
+- Configuração de vantagem/desvantagem (d20)
+- Interface simplificada para rolagens rápidas
+
+### Modo Personagem
+- Integração com ficha de personagem
+- Seletor de personagem (favoritos ou passado via navegação)
+- Rolagem de atributos com valores calculados (incluindo bônus racial)
+- Rolagem de perícias com bônus completo:
+  - Metade do nível (arredondado para baixo)
+  - Valor do atributo relacionado
+  - Bônus de treinamento (+2/+4/+6 conforme nível)
+- UI colapsável: ao selecionar atributo/perícia, mostra resumo compacto
+- Resultado exibido antes do seletor de personagem para melhor fluxo
+
+### Cálculos de Personagem
+
+**Atributos:**
+- Usa `getCharacterTotalAttributeValue()` que retorna valor direto (base + raça)
+- Exemplo: Força base 1 + bônus racial 2 = 3
+- O valor 3 é usado diretamente no teste (d20 + 3)
+
+**Perícias:**
+- `halfLevel`: Math.floor(level / 2)
+- `attrValue`: valor total do atributo relacionado
+- `trainingBonus`: +2 (1-6), +4 (7-14), +6 (15-20) se treinado, senão 0
+- **Total**: halfLevel + attrValue + trainingBonus
+
+**Interface de Seleção:**
+- Atributos em grade 3x2 com labels (FOR, DES, CON, INT, SAB, CAR) e valores
+- Perícias em lista vertical agrupada por atributo
+- Ao selecionar, colapsa para linha única mostrando nome e bônus
+- Clique na linha colapsada expande novamente a seleção

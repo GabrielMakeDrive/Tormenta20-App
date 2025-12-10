@@ -210,7 +210,9 @@ function CharacterDetail() {
                   const baseAttr = character.attributes?.[skill.attr] ?? 0;
                   const adjustedAttr = baseAttr + getRaceAdjustment(raceDefinition, skill.attr);
                   const trained = character.skills?.includes(skill.id);
-                  const bonus = trained ? mod + Math.floor(character.level / 2) + 2 : mod;
+                  const halfLevel = Math.floor(character.level / 2);
+                  const trainingBonus = trained ? (character.level >= 15 ? 6 : character.level >= 7 ? 4 : 2) : 0;
+                  const bonus = halfLevel + adjustedAttr + trainingBonus;
                   
                   return (
                     <div key={skill.id} className={`skill-item ${trained ? 'trained' : ''}`}>
