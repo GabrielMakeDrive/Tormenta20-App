@@ -154,6 +154,7 @@ function Inventory() {
           <div className="summary-item">
             <span className="summary-icon">💰</span>
             <MoneyEditor 
+              label="T$"
               value={character.money} 
               onSave={(newMoney) => {
                 const updated = { ...character, money: newMoney };
