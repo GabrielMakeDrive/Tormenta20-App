@@ -54,6 +54,8 @@ O aplicativo deve ser simples e direto, com fluxos de uso claros para jogadores 
 - Feedback imediato e visível para salvar/erro (toasts, banners ou modais não intrusivos).
 - Operações offline e sincronização local confiável — PWA com armazenamento persistente.
 - Acessibilidade básica: textos legíveis, foco em contraste, e suporte a navegação por teclado quando aplicável.
+- Os estilos unificados estão em styles/global.css e devem ser seguidos sempre que possível.
+- Não utilizar cores fora das variáveis definidas.
 
 ### Considerações de segurança e privacidade
 

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Header, Button, Modal, Toast } from '../../components';
+import { Header, Button, Modal, Toast, MoneyEditor } from '../../components';
 import { getCharacterById, saveCharacter } from '../../services';
 import { createInventoryItem, ITEM_TYPES, RARITIES, calculateTotalWeight, calculateTotalValue } from '../../models';
 import './Inventory.css';
@@ -153,7 +153,14 @@ function Inventory() {
           </div>
           <div className="summary-item">
             <span className="summary-icon">💰</span>
-            <span className="summary-value">T$ {totalValue}</span>
+            <MoneyEditor 
+              value={character.money} 
+              onSave={(newMoney) => {
+                const updated = { ...character, money: newMoney };
+                setCharacter(updated);
+                saveCharacter(updated);
+              }}
+            />
           </div>
           <div className="summary-item">
             <span className="summary-icon">📦</span>

@@ -5,7 +5,7 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Header, Button, Toast } from '../../components';
+import { Header, Button, Toast, MoneyEditor } from '../../components';
 import { getCharacterById, saveCharacter } from '../../services';
 import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition } from '../../models';
 import './CharacterDetail.css';
@@ -184,7 +184,15 @@ function CharacterDetail() {
           </div>
           <div className="stat-box">
             <span className="stat-label">T$</span>
-            <span className="stat-value">{character.money}</span>
+            <MoneyEditor 
+              value={character.money} 
+              label=""
+              onSave={(newMoney) => {
+                const updated = { ...character, money: newMoney };
+                setCharacter(updated);
+                saveCharacter(updated);
+              }}
+            />
           </div>
         </section>
 

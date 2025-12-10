@@ -1,0 +1,68 @@
+/* MoneyEditor.css - Estilos para o componente MoneyEditor */
+
+.money-display {
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.2s;
+}
+
+.money-display:hover {
+  opacity: 0.8;
+}
+
+.money-form .form-group {
+  margin-bottom: 1rem;
+}
+
+.money-form label {
+  display: block;
+  margin-bottom: 0.5rem;
+  font-weight: bold;
+  color: var(--text-primary);
+}
+
+.money-form input {
+  width: 100%;
+  padding: 0.5rem;
+  font-size: 1rem;
+  background: var(--surface-color);
+  border: 0px;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.input-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.input-group input {
+  flex: 1;
+  border-radius: 0;
+}
+
+.adjust-btn {
+  flex: 1;
+  padding: 8px;
+  border: none;
+  background: var(--hover-color);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.adjust-btn:active {
+  background: var(--border-color);
+}
+
+.form-actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
