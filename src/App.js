@@ -79,9 +79,6 @@ function App() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false);
   const [installPromptEvent, setInstallPromptEvent] = useState(null);
 
-  // Define o basename baseado no ambiente (produção usa /Tormenta20-App/)
-  const basename = process.env.NODE_ENV === 'production' ? '/Tormenta20-App' : '';
-
   useEffect(() => {
     // Log da versão na inicialização
     console.log('Tormenta 20 App v' + process.env.REACT_APP_VERSION);
@@ -177,7 +174,7 @@ function App() {
   };
 
   return (
-    <Router basename={basename}>
+    <Router basename="/Tormenta20-App">
       <div className="app">
         <Routes>
           <Route path="/" element={<Home />} />

@@ -2,7 +2,7 @@
   margin-bottom: 24px;
 }
 
-.form-label {
+.character-create-page .form-label {
   display: block;
   font-size: 0.9rem;
   font-weight: 600;
@@ -12,21 +12,21 @@
   letter-spacing: 0.5px;
 }
 
-.points-label {
+.character-create-page .points-label {
   display: flex;
   justify-content: space-between;
   align-items: center;
   gap: 8px;
 }
 
-.points-remaining {
+.character-create-page .points-remaining {
   font-size: 0.85rem;
   color: var(--primary-color);
   text-transform: none;
 }
 
-.form-input,
-.form-select {
+.character-create-page .form-input,
+.character-create-page .form-select {
   width: 100%;
   padding: 14px 16px;
   font-size: 1rem;
@@ -38,13 +38,13 @@
   transition: border-color 0.2s ease;
 }
 
-.form-input:focus,
-.form-select:focus {
+.character-create-page .form-input:focus,
+.character-create-page .form-select:focus {
   outline: none;
   border-color: var(--primary-color);
 }
 
-.form-select {
+.character-create-page .form-select {
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%239e9e9e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
@@ -52,13 +52,13 @@
   padding-right: 40px;
 }
 
-.icon-picker {
+.character-create-page .icon-picker {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.icon-option {
+.character-create-page .icon-option {
   width: 48px;
   height: 48px;
   font-size: 1.5rem;
@@ -69,69 +69,70 @@
   transition: all 0.2s ease;
 }
 
-.icon-option.selected {
+.character-create-page .icon-option.selected {
   border-color: var(--primary-color);
   background: var(--primary-light);
 }
 
-.icon-option:active {
+.character-create-page .icon-option:active {
   transform: scale(0.95);
 }
 
-.attributes-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
+.character-create-page .attributes-grid {
+  display: flex;
+  flex-wrap: wrap;
   gap: 12px;
 }
 
-.attribute-input {
+.character-create-page .attribute-input {
   background: var(--surface-color);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 12px;
   text-align: center;
+  flex: 1 1 140px;
+  min-width: 140px;
 }
 
-.attribute-input label {
+.character-create-page .attribute-input label {
   display: block;
   font-size: 0.8rem;
   color: var(--text-secondary);
   margin-bottom: 8px;
 }
 
-.attribute-controls {
+.character-create-page .attribute-controls {
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
 }
 
-/* Level input controls: input grows, buttons placed to the right */
-.level-input-controls {
+.character-create-page .level-input-controls {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.level-input-controls .level-input {
+.character-create-page .level-input-controls .level-input {
   flex: 1;
   width: auto; /* override .form-input width: 100% */
 }
 
-.level-buttons {
+.character-create-page .level-buttons {
   display: flex;
   gap: 6px;
   align-items: center;
 }
 
-.attr-btn.small {
+.character-create-page .attr-btn.small {
   width: 28px;
   height: 28px;
   font-size: 0.95rem;
   padding: 0;
 }
 
-.attribute-value-display {
+.character-create-page .attribute-value-display {
   min-width: 48px;
   text-align: center;
   font-size: 1.3rem;
@@ -139,20 +140,20 @@
   color: var(--text-primary);
 }
 
-.attribute-value-stack {
+.character-create-page .attribute-value-stack {
   min-width: 64px;
   display: flex;
   flex-direction: column;
   align-items: center;
 }
 
-.attribute-bonus-breakdown {
+.character-create-page .attribute-bonus-breakdown {
   font-size: 0.65rem;
   color: var(--text-secondary);
   margin-top: 2px;
 }
 
-.attr-btn {
+.character-create-page .attr-btn {
   width: 32px;
   height: 32px;
   border: none;
@@ -163,29 +164,29 @@
   cursor: pointer;
 }
 
-.attr-btn:active {
+.character-create-page .attr-btn:active {
   background: var(--border-color);
 }
 
-.attr-btn:disabled {
+.character-create-page .attr-btn:disabled {
   opacity: 0.4;
   cursor: default;
 }
 
 
-.form-actions {
+.character-create-page .form-actions {
   padding: 16px 0;
   margin-top: 16px;
 }
 
 /* Skills Section */
-.skills-section {
+.character-create-page .skills-section {
   display: flex;
   flex-direction: column;
   gap: 16px;
 }
 
-.choice-skills h4 {
+.character-create-page .choice-skills h4 {
   font-size: 0.85rem;
   color: var(--text-secondary);
   margin: 0 0 8px 0;
@@ -193,15 +194,15 @@
   letter-spacing: 0.5px;
 }
 
-.choice-group {
+.character-create-page .choice-group {
   margin-bottom: 16px;
 }
 
-.choice-group:last-child {
+.character-create-page .choice-group:last-child {
   margin-bottom: 0;
 }
 
-.group-collapsed {
+.character-create-page .group-collapsed {
   width: 100%;
   display: flex;
   justify-content: space-between;
@@ -214,42 +215,42 @@
   transition: all 0.2s;
 }
 
-.group-collapsed:hover {
+.character-create-page .group-collapsed:hover {
   border-color: var(--primary-color);
   background: var(--background-color);
 }
 
-.group-collapsed.completed {
+.character-create-page .group-collapsed.completed {
   border-color: var(--primary-color);
   background: rgba(229, 57, 53, 0.05);
 }
 
-.group-label {
+.character-create-page .group-label {
   font-weight: 600;
   color: var(--text-primary);
 }
 
-.group-status {
+.character-create-page .group-status {
   font-weight: 600;
   color: var(--text-secondary);
 }
 
-.group-collapsed.completed .group-status {
+.character-create-page .group-collapsed.completed .group-status {
   color: var(--primary-color);
 }
 
-.expand-icon {
+.character-create-page .expand-icon {
   color: var(--text-secondary);
   font-size: 1.2rem;
 }
 
-.group-expanded {
+.character-create-page .group-expanded {
   border: 1px solid var(--border-color);
   border-radius: 8px;
   background: var(--surface-color);
 }
 
-.group-header {
+.character-create-page .group-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -259,7 +260,7 @@
   color: var(--text-primary);
 }
 
-.collapse-btn {
+.character-create-page .collapse-btn {
   background: none;
   border: none;
   color: var(--text-secondary);
@@ -268,13 +269,13 @@
   padding: 4px;
 }
 
-.skills-list {
+.character-create-page .skills-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
 
-.skill-item {
+.character-create-page .skill-item {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -286,26 +287,26 @@
   color: var(--text-primary);
 }
 
-.skill-item.mandatory {
+.character-create-page .skill-item.mandatory {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
 }
 
-.skill-item.choice {
+.character-create-page .skill-item.choice {
   cursor: pointer;
   transition: all 0.2s;
 }
 
 /* Skills Section */
-.section-header {
+.character-create-page .section-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
 }
 
-.edit-btn {
+.character-create-page .edit-btn {
   background: none;
   border: none;
   color: var(--primary-color);
@@ -314,14 +315,14 @@
   padding: 4px 8px;
 }
 
-.selected-skills-list {
+.character-create-page .selected-skills-list {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
   margin-bottom: 24px;
 }
 
-.skill-tag {
+.character-create-page .skill-tag {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -332,18 +333,18 @@
   border: 1px solid var(--border-color);
 }
 
-.skill-tag.mandatory {
+.character-create-page .skill-tag.mandatory {
   background: var(--primary-light);
   border-color: var(--primary-color);
   color: var(--primary-color);
 }
 
-.skill-tag.choice {
+.character-create-page .skill-tag.choice {
   background: var(--surface-color);
   border-color: var(--text-secondary);
 }
 
-.skill-badge {
+.character-create-page .skill-badge {
   font-size: 0.7rem;
   background: rgba(0,0,0,0.1);
   padding: 2px 6px;
@@ -351,27 +352,27 @@
   text-transform: uppercase;
 }
 
-.skill-selection-area {
+.character-create-page .skill-selection-area {
   background: var(--surface-color);
   border: 1px solid var(--border-color);
   border-radius: 12px;
   padding: 16px;
 }
 
-.selection-header {
+.character-create-page .selection-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 16px;
 }
 
-.selection-header h4 {
+.character-create-page .selection-header h4 {
   margin: 0;
   font-size: 1rem;
   color: var(--text-primary);
 }
 
-.step-indicator {
+.character-create-page .step-indicator {
   display: block;
   font-size: 0.8rem;
   color: var(--text-secondary);
@@ -379,7 +380,7 @@
   margin-top: 2px;
 }
 
-.selection-count {
+.character-create-page .selection-count {
   font-size: 0.9rem;
   font-weight: 600;
   color: var(--primary-color);
@@ -388,14 +389,14 @@
   border-radius: 6px;
 }
 
-.skills-grid {
+.character-create-page .skills-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 8px;
   margin-bottom: 16px;
 }
 
-.skill-option-btn {
+.character-create-page .skill-option-btn {
   display: flex;
   flex-direction: column;
   align-items: flex-start;
@@ -408,49 +409,49 @@
   text-align: left;
 }
 
-.skill-option-btn:hover {
+.character-create-page .skill-option-btn:hover {
   border-color: var(--primary-color);
 }
 
-.skill-option-btn.selected {
+.character-create-page .skill-option-btn.selected {
   background: var(--primary-color);
   border-color: var(--primary-color);
   color: white;
 }
 
-.skill-option-btn.selected .skill-attr {
+.character-create-page .skill-option-btn.selected .skill-attr {
   color: rgba(255,255,255,0.8);
 }
 
-.skill-option-btn .skill-name {
+.character-create-page .skill-option-btn .skill-name {
   font-weight: 600;
   font-size: 0.9rem;
   margin-bottom: 2px;
 }
 
-.skill-option-btn .skill-attr {
+.character-create-page .skill-option-btn .skill-attr {
   font-size: 0.75rem;
   color: var(--text-secondary);
 }
 
-.selection-actions {
+.character-create-page .selection-actions {
   display: flex;
   justify-content: flex-end;
 }
 
 /* Talents Section */
-.talents-section {
+.character-create-page .talents-section {
   max-height: 400px;
   overflow-y: auto;
 }
 
-.talents-list {
+.character-create-page .talents-list {
   display: flex;
   flex-direction: column;
   gap: 8px;
 }
 
-.talent-item {
+.character-create-page .talent-item {
   display: block;
   width: 100%;
   padding: 12px;
@@ -463,44 +464,44 @@
   transition: all 0.2s;
 }
 
-.talent-item:hover {
+.character-create-page .talent-item:hover {
   border-color: var(--primary-color);
 }
 
-.talent-item.selected {
+.character-create-page .talent-item.selected {
   background: var(--primary-color);
   color: white;
   border-color: var(--primary-color);
 }
 
-.talent-header {
+.character-create-page .talent-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 4px;
 }
 
-.talent-name {
+.character-create-page .talent-name {
   font-weight: 600;
   font-size: 0.9rem;
 }
 
-.talent-prereq {
+.character-create-page .talent-prereq {
   font-size: 0.75rem;
   color: var(--text-secondary);
   font-style: italic;
 }
 
-.talent-item.selected .talent-prereq {
+.character-create-page .talent-item.selected .talent-prereq {
   color: rgba(255, 255, 255, 0.8);
 }
 
-.talent-desc {
+.character-create-page .talent-desc {
   font-size: 0.8rem;
   line-height: 1.4;
   color: var(--text-secondary);
 }
 
-.talent-item.selected .talent-desc {
+.character-create-page .talent-item.selected .talent-desc {
   color: rgba(255, 255, 255, 0.9);
 }
