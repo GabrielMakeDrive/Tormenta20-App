@@ -11,7 +11,6 @@ import {
   RACES, 
   CLASSES, 
   SKILLS,
-  TALENTS,
   getTalentsForClass,
   calculateMaxHp,
   calculateMaxMp,
@@ -93,11 +92,6 @@ const getMandatorySkills = (characterClass) => {
     return [];
   }
   return characterClass.skillTraining.mandatory;
-};
-
-const getGroupForSkill = (characterClass, skillId) => {
-  if (!characterClass?.skillTraining?.choiceGroups) return -1;
-  return characterClass.skillTraining.choiceGroups.findIndex(group => group.options.includes(skillId));
 };
 
 const sanitizeAttributesForForm = (attributes = {}) => {
@@ -486,7 +480,7 @@ function CharacterCreate({ mode = 'create' }) {
       saveCharacter(updatedCharacter);
       setToast({ message: 'Personagem atualizado com sucesso!', type: 'success' });
       setTimeout(() => {
-        navigate(`/characters/${updatedCharacter.id}`);
+        navigate(`/characters/${updatedCharacter.id}`, { state: { toast: { message: 'Personagem atualizado com sucesso!', type: 'success' } } });
       }, 800);
       return;
     }
@@ -508,7 +502,7 @@ function CharacterCreate({ mode = 'create' }) {
     setToast({ message: 'Personagem criado com sucesso!', type: 'success' });
     
     setTimeout(() => {
-      navigate(`/characters/${character.id}`);
+      navigate(`/characters/${character.id}`, { state: { toast: { message: 'Personagem criado com sucesso!', type: 'success' } } });
     }, 1000);
   };
 

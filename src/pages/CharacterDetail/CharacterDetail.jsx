@@ -4,7 +4,7 @@
  * perícias, recursos) em tempo real na UI.
  */
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Header, Button, Toast } from '../../components';
 import { getCharacterById, saveCharacter } from '../../services';
 import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition } from '../../models';
@@ -33,9 +33,16 @@ const ATTRIBUTE_LABELS = {
 function CharacterDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [character, setCharacter] = useState(null);
   const [activeTab, setActiveTab] = useState('stats');
   const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.toast) {
+      setToast(location.state.toast);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const loaded = getCharacterById(id);
