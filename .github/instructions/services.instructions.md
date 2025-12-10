@@ -127,7 +127,7 @@ Gera objeto completo para backup.
   rollHistory: [...],
   settings: {...},
   exportedAt: 'ISO timestamp',
-  version: '1.0.1'
+  version: '[version from package.json]'
 }
 ```
 

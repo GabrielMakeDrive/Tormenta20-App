@@ -44,7 +44,7 @@ Tela de configurações do aplicativo com opções de personalização, backup d
 
 ### 4. Sobre
 - Nome do aplicativo
-- Versão atual (1.0.1)
+- Versão atual (definida em package.json)
 - Disclaimer sobre não afiliação oficial
 
 ### 5. Depuração
@@ -75,7 +75,7 @@ Tela de configurações do aplicativo com opções de personalização, backup d
     "vibrationEnabled": true
   },
   "exportedAt": "2024-01-01T00:00:00.000Z",
-  "version": "1.0.1"
+  "version": "[version from package.json]"
 }
 ```
 

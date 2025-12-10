@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/Tormenta20-App/static/css/main.4c7f7d67.css",
-    "main.js": "/Tormenta20-App/static/js/main.2b35be37.js",
+    "main.js": "/Tormenta20-App/static/js/main.737ca5dd.js",
     "static/js/453.98c06f4e.chunk.js": "/Tormenta20-App/static/js/453.98c06f4e.chunk.js",
     "static/media/d20.png": "/Tormenta20-App/static/media/d20.e4936bb12d7485172256.png",
     "index.html": "/Tormenta20-App/index.html",
     "main.4c7f7d67.css.map": "/Tormenta20-App/static/css/main.4c7f7d67.css.map",
-    "main.2b35be37.js.map": "/Tormenta20-App/static/js/main.2b35be37.js.map",
+    "main.737ca5dd.js.map": "/Tormenta20-App/static/js/main.737ca5dd.js.map",
     "453.98c06f4e.chunk.js.map": "/Tormenta20-App/static/js/453.98c06f4e.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.4c7f7d67.css",
-    "static/js/main.2b35be37.js"
+    "static/js/main.737ca5dd.js"
   ]
 }

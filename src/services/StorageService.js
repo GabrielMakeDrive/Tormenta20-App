@@ -289,7 +289,7 @@ export const exportAllData = () => {
     rollHistory: serializeRollList(loadRollHistory()),
     settings: loadSettings(),
     exportedAt: new Date().toISOString(),
-    version: '1.0.1',
+    version: process.env.npm_package_version,
   };
 };
 
