@@ -9,6 +9,34 @@ const STORAGE_KEYS = {
   SETTINGS: 'tormenta20_settings',
 };
 
+const storageManager = (typeof navigator !== 'undefined' && navigator.storage) ? navigator.storage : null;
+
+export const SETTINGS_UPDATE_EVENT = 't20_settings_updated';
+
+const parseBoolean = (value, defaultValue = false) => {
+  if (typeof value === 'boolean') {
+    return value;
+  }
+  if (typeof value === 'string') {
+    const normalized = value.trim().toLowerCase();
+    if (normalized === 'true') {
+      return true;
+    }
+    if (normalized === 'false') {
+      return false;
+    }
+  }
+  if (typeof value === 'number') {
+    if (value === 1) {
+      return true;
+    }
+    if (value === 0) {
+      return false;
+    }
+  }
+  return defaultValue;
+};
+
 /**
  * Salva dados no localStorage
  */
@@ -148,20 +176,91 @@ const DEFAULT_SETTINGS = {
   theme: 'dark',
   soundEnabled: true,
   vibrationEnabled: true,
+  debugNotificationsEnabled: false,
+};
+
+const normalizeTheme = (value) => (value === 'light' ? 'light' : 'dark');
+
+const normalizeSettingsShape = (settings = {}) => {
+  const merged = { ...DEFAULT_SETTINGS, ...settings };
+  return {
+    ...merged,
+    theme: normalizeTheme(merged.theme),
+    soundEnabled: parseBoolean(merged.soundEnabled, true),
+    vibrationEnabled: parseBoolean(merged.vibrationEnabled, true),
+    debugNotificationsEnabled: parseBoolean(merged.debugNotificationsEnabled, false),
+  };
+};
+
+const emitSettingsUpdate = (settings) => {
+  if (typeof window === 'undefined' || typeof window.dispatchEvent !== 'function') {
+    return;
+  }
+
+  window.dispatchEvent(new CustomEvent(SETTINGS_UPDATE_EVENT, { detail: settings }));
 };
 
 /**
  * Salva configurações
  */
 export const saveSettings = (settings) => {
-  return saveData(STORAGE_KEYS.SETTINGS, settings);
+  const normalized = normalizeSettingsShape(settings);
+  const saved = saveData(STORAGE_KEYS.SETTINGS, normalized);
+  if (saved) {
+    emitSettingsUpdate(normalized);
+  }
+  return saved;
 };
 
 /**
  * Carrega configurações
  */
 export const loadSettings = () => {
-  return loadData(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
+  const stored = loadData(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS) || {};
+  return normalizeSettingsShape(stored);
+};
+
+// ============ STORAGE PERSISTENCE ============
+
+/**
+ * Verifica se o storage persistente está ativo
+ */
+export const isPersistentStorageEnabled = async () => {
+  if (!storageManager || typeof storageManager.persisted !== 'function') {
+    return false;
+  }
+
+  try {
+    return await storageManager.persisted();
+  } catch (error) {
+    console.error('Erro ao verificar storage persistente:', error);
+    return false;
+  }
+};
+
+/**
+ * Solicita storage persistente quando disponível
+ */
+export const ensurePersistentStorage = async () => {
+  if (!storageManager) {
+    return { supported: false, persisted: false };
+  }
+
+  try {
+    if (await isPersistentStorageEnabled()) {
+      return { supported: true, persisted: true };
+    }
+
+    if (typeof storageManager.persist === 'function') {
+      const granted = await storageManager.persist();
+      return { supported: true, persisted: granted };
+    }
+
+    return { supported: true, persisted: false };
+  } catch (error) {
+    console.error('Erro ao solicitar storage persistente:', error);
+    return { supported: true, persisted: false };
+  }
 };
 
 // ============ EXPORT/IMPORT ============
@@ -175,7 +274,7 @@ export const exportAllData = () => {
     rollHistory: loadRollHistory(),
     settings: loadSettings(),
     exportedAt: new Date().toISOString(),
-    version: '1.0.0',
+    version: '1.0.1',
   };
 };
 

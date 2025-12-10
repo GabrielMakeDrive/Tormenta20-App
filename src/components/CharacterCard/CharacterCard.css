@@ -32,6 +32,12 @@
   min-width: 0;
 }
 
+.character-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .character-name {
   font-size: 1.1rem;
   font-weight: 600;
@@ -40,6 +46,42 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+
+.favorite-toggle {
+  background: transparent;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.2rem;
+  line-height: 1;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.favorite-icon {
+  width: 18px;
+  height: 18px;
+  display: block;
+  fill: currentColor;
+}
+
+.favorite-toggle.is-favorite {
+  color: var(--warning-color);
+}
+
+.favorite-toggle:focus-visible {
+  outline: 2px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.favorite-toggle:active {
+  transform: scale(0.9);
 }
 
 .character-details {

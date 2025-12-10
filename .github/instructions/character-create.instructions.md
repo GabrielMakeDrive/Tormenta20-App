@@ -40,12 +40,16 @@ Formulário para criação de um novo personagem com todas as informações bás
 - Grid 2x3 com os 6 atributos
 - Controles +/- para ajuste
 - Exibe modificador calculado automaticamente
-- Range: 1-30
+- Range: -1 a +3 (modificadores)
 - Atributos: Força, Destreza, Constituição, Inteligência, Sabedoria, Carisma
+- **Sistema de Pontos**: o usuário distribui 10 pontos seguindo os custos (-1 ➜ -1, 0 ➜ 0, 1 ➜ 1, 2 ➜ 2, 3 ➜ 4). Exibir o contador "Restantes" ao lado do título.
+- Valores iniciam em 0 e devem ser armazenados como modificadores brutos; bônus/penalidades de raça/classe são aplicados apenas no cálculo em tempo real.
+- Os valores exibidos na UI devem usar o formato assinado (ex.: +2, -1) para reforçar que representam modificadores.
 
 ### 7. Cálculos Automáticos
-- PV inicial = Dado de vida da classe + mod. Constituição
-- Modificador = Math.floor((valor - 10) / 2)
+- PV inicial = (hp.initial + Constituição) + (nível - 1) x (hp.perLevel + Constituição)
+- PM inicial = mpPerLevel × nível
+- Modificador = `getAttributeModifier(valor)` reutilizando helper de `models/Character.js`
 
 ## Componentes Utilizados
 - `Header` - Com botão voltar

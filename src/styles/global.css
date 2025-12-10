@@ -109,8 +109,10 @@ html, body {
   flex: 1;
   padding: var(--spacing-md);
   padding-top: calc(70px + var(--safe-area-top));
-  padding-bottom: calc(80px + var(--safe-area-bottom));
+  padding-bottom: calc(120px + var(--safe-area-bottom));
+  margin-bottom: var(--spacing-md);
   overflow-y: auto;
+  scroll-padding-bottom: 120px;
 }
 
 /* Scrollbar Customizada */

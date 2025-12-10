@@ -1,9 +1,25 @@
+/*
+ * CharacterDetail apresenta e permite ajustes rápidos de uma ficha existente,
+ * consumindo dados persistidos e recalculando valores derivados (atributos,
+ * perícias, recursos) em tempo real na UI.
+ */
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Header, Button, Toast } from '../../components';
 import { getCharacterById, saveCharacter } from '../../services';
 import { getAttributeModifier, SKILLS } from '../../models';
 import './CharacterDetail.css';
+
+const formatAttributeValue = (value = 0) => (value > 0 ? `+${value}` : `${value}`);
+
+const getRaceAdjustment = (race, attrKey) => {
+  if (!race) {
+    return 0;
+  }
+  const bonus = typeof race.bonus?.[attrKey] === 'number' ? race.bonus[attrKey] : 0;
+  const penalty = typeof race.penalty?.[attrKey] === 'number' ? race.penalty[attrKey] : 0;
+  return bonus + penalty;
+};
 
 function CharacterDetail() {
   const { id } = useParams();
@@ -121,15 +137,20 @@ function CharacterDetail() {
         {/* Atributos */}
         <section className="attributes-section">
           <div className="attributes-row">
-            {Object.entries(character.attributes).map(([attr, value]) => (
-              <div key={attr} className="attribute-box">
-                <span className="attr-label">{attributeLabels[attr]}</span>
-                <span className="attr-value">{value}</span>
-                <span className="attr-mod">
-                  {getAttributeModifier(value) >= 0 ? '+' : ''}{getAttributeModifier(value)}
-                </span>
-              </div>
-            ))}
+            {Object.keys(attributeLabels).map((attr) => {
+              const baseValue = character.attributes?.[attr] ?? 0;
+              const adjustedValue = baseValue + getRaceAdjustment(character.race, attr);
+              const modifier = getAttributeModifier(adjustedValue);
+              return (
+                <div key={attr} className="attribute-box">
+                  <span className="attr-label">{attributeLabels[attr]}</span>
+                  <span className="attr-value">{formatAttributeValue(baseValue)}</span>
+                  <span className="attr-mod">
+                    Total {modifier >= 0 ? '+' : ''}{modifier}
+                  </span>
+                </div>
+              );
+            })}
           </div>
         </section>
 
@@ -175,8 +196,9 @@ function CharacterDetail() {
             <div className="skills-tab">
               <div className="skills-list">
                 {SKILLS.map((skill) => {
-                  const attrValue = character.attributes[skill.attr] || 10;
-                  const mod = getAttributeModifier(attrValue);
+                  const baseAttr = character.attributes?.[skill.attr] ?? 0;
+                  const adjustedAttr = baseAttr + getRaceAdjustment(character.race, skill.attr);
+                  const mod = getAttributeModifier(adjustedAttr);
                   const trained = character.skills?.includes(skill.id);
                   const bonus = trained ? mod + Math.floor(character.level / 2) + 2 : mod;
                   

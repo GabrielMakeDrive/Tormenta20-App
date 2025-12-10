@@ -133,6 +133,34 @@ Notificação temporária não-intrusiva.
 
 ---
 
+## DebugNotifier
+**Arquivo**: `DebugNotifier/DebugNotifier.jsx`
+
+Exibe logs do console como toasts para depuração em dispositivos sem DevTools.
+
+### Comportamento
+- Observa `console.log/info/warn/error/debug`
+
+---
+
+## InstallPrompt
+**Arquivo**: `InstallPrompt/InstallPrompt.jsx`
+
+Banner persistente que sugere instalar o PWA quando não estiver em modo standalone.
+
+### Comportamento
+- Fica fixo acima da BottomNav
+- Mostra texto curto explicando os benefícios e botão "Instalar" (quando `beforeinstallprompt` disponível)
+- Botão "Agora não" apenas oculta e grava o dismiss em `localStorage`
+- Recebe props `installAvailable`, `onInstall`, `onDismiss`
+- Usa `Button` component para ações e aplica sombras suaves para destaque
+- Enfileira mensagens e exibe uma notificação por vez
+- Mantém fila curta (máx. 10 mensagens) para evitar overflow
+- Respeita o toggle `debugNotificationsEnabled` salvo em Settings
+- Deve responder a `window` storage/custom events para mudanças em tempo real
+
+---
+
 ## Modal
 **Arquivo**: `Modal/Modal.jsx`
 

@@ -79,15 +79,26 @@ Array com todas as 16 raças jogáveis.
 ```
 
 ### CLASSES
-Array com todas as 14 classes.
+Array com todas as 14 classes com estatísticas completas vindas do Tormenta Collab.
 ```javascript
 {
   id: 'guerreiro',
   name: 'Guerreiro',
-  hitDie: 10,               // Dado de vida
-  mainAttr: 'forca'         // Atributo principal
+  hitDie: 10,                 // Referência informativa original do sistema
+  mainAttr: 'forca',          // Atributo principal
+  hp: { initial: 20, perLevel: 5 }, // Valores base somados à Constituição do personagem
+  mpPerLevel: 3,              // Quantos PM a classe fornece por nível
+  skillTraining: {            // Estrutura que descreve perícias obrigatórias e escolhas
+    mandatory: ['fortitude'],
+    choiceGroups: [
+      { choose: 1, options: ['luta', 'pontaria'] },
+      { choose: 2, options: [...] } // Demais seleções
+    ]
+  },
+  proficiencies: ['armas marciais', 'armaduras pesadas', 'escudos']
 }
 ```
+> `hp.initial` se aplica ao 1º nível (PV = initial + Constituição) enquanto `hp.perLevel` define o ganho por nível adicional (perLevel + Constituição). As listas de perícias usam os IDs definidos em `SKILLS`.
 
 ### SKILLS
 Array com todas as 29 perícias.

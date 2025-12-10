@@ -1,3 +1,9 @@
+/**
+ * Character data model module centralizes the canonical structures for Tormenta 20.
+ * It exposes the createCharacter factory used by UI forms and the reference datasets
+ * (RACES, CLASSES, SKILLS) that drive dropdowns, calculations and validations across the app.
+ * Data flows from UI → services → StorageService using the shapes described here.
+ */
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -16,12 +22,12 @@ export const createCharacter = (data = {}) => ({
   
   // Atributos base (antes de modificadores)
   attributes: {
-    forca: data.attributes?.forca || 10,
-    destreza: data.attributes?.destreza || 10,
-    constituicao: data.attributes?.constituicao || 10,
-    inteligencia: data.attributes?.inteligencia || 10,
-    sabedoria: data.attributes?.sabedoria || 10,
-    carisma: data.attributes?.carisma || 10,
+    forca: data.attributes?.forca ?? 0,
+    destreza: data.attributes?.destreza ?? 0,
+    constituicao: data.attributes?.constituicao ?? 0,
+    inteligencia: data.attributes?.inteligencia ?? 0,
+    sabedoria: data.attributes?.sabedoria ?? 0,
+    carisma: data.attributes?.carisma ?? 0,
   },
   
   // Pontos de Vida e Mana
@@ -53,6 +59,9 @@ export const createCharacter = (data = {}) => ({
   
   // Anotações livres
   notes: data.notes || '',
+
+  // Favorito
+  isFavorite: data.isFavorite ?? false,
   
   // Metadados
   createdAt: data.createdAt || new Date().toISOString(),
@@ -63,7 +72,11 @@ export const createCharacter = (data = {}) => ({
  * Calcula modificador de atributo
  */
 export const getAttributeModifier = (value) => {
-  return Math.floor((value - 10) / 2);
+  const normalized = Number(value);
+  if (Number.isNaN(normalized)) {
+    return 0;
+  }
+  return normalized;
 };
 
 /**
@@ -89,23 +102,461 @@ export const RACES = [
 ];
 
 /**
- * Lista de Classes disponíveis em Tormenta 20
+ * Lista de Classes disponíveis em Tormenta 20 com estatísticas completas de PV/PM, perícias e proficiências.
+ * hp.initial aplica-se ao 1º nível (valor base + Constituição) e hp.perLevel aos níveis subsequentes.
  */
 export const CLASSES = [
-  { id: 'arcanista', name: 'Arcanista', hitDie: 6, mainAttr: 'inteligencia' },
-  { id: 'barbaro', name: 'Bárbaro', hitDie: 12, mainAttr: 'forca' },
-  { id: 'bardo', name: 'Bardo', hitDie: 8, mainAttr: 'carisma' },
-  { id: 'bucaneiro', name: 'Bucaneiro', hitDie: 10, mainAttr: 'destreza' },
-  { id: 'cacador', name: 'Caçador', hitDie: 10, mainAttr: 'destreza' },
-  { id: 'cavaleiro', name: 'Cavaleiro', hitDie: 10, mainAttr: 'forca' },
-  { id: 'clerigo', name: 'Clérigo', hitDie: 8, mainAttr: 'sabedoria' },
-  { id: 'druida', name: 'Druida', hitDie: 8, mainAttr: 'sabedoria' },
-  { id: 'guerreiro', name: 'Guerreiro', hitDie: 10, mainAttr: 'forca' },
-  { id: 'inventor', name: 'Inventor', hitDie: 8, mainAttr: 'inteligencia' },
-  { id: 'ladino', name: 'Ladino', hitDie: 8, mainAttr: 'destreza' },
-  { id: 'lutador', name: 'Lutador', hitDie: 10, mainAttr: 'destreza' },
-  { id: 'nobre', name: 'Nobre', hitDie: 8, mainAttr: 'carisma' },
-  { id: 'paladino', name: 'Paladino', hitDie: 10, mainAttr: 'carisma' },
+  {
+    id: 'arcanista',
+    name: 'Arcanista',
+    hitDie: 6,
+    mainAttr: 'inteligencia',
+    hp: { initial: 8, perLevel: 2 },
+    mpPerLevel: 6,
+    skillTraining: {
+      mandatory: ['misticismo', 'vontade'],
+      choiceGroups: [
+        {
+          choose: 2,
+          options: [
+            'conhecimento',
+            'diplomacia',
+            'enganacao',
+            'guerra',
+            'iniciativa',
+            'intimidacao',
+            'intuicao',
+            'investigacao',
+            'nobreza',
+            'oficio',
+            'percepcao',
+          ],
+        },
+      ],
+    },
+    proficiencies: [],
+  },
+  {
+    id: 'barbaro',
+    name: 'Bárbaro',
+    hitDie: 12,
+    mainAttr: 'forca',
+    hp: { initial: 24, perLevel: 6 },
+    mpPerLevel: 3,
+    skillTraining: {
+      mandatory: ['fortitude', 'luta'],
+      choiceGroups: [
+        {
+          choose: 4,
+          options: [
+            'adestramento',
+            'atletismo',
+            'cavalgar',
+            'iniciativa',
+            'intimidacao',
+            'oficio',
+            'percepcao',
+            'pontaria',
+            'sobrevivencia',
+            'vontade',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armas marciais', 'escudos'],
+  },
+  {
+    id: 'bardo',
+    name: 'Bardo',
+    hitDie: 8,
+    mainAttr: 'carisma',
+    hp: { initial: 12, perLevel: 3 },
+    mpPerLevel: 4,
+    skillTraining: {
+      mandatory: ['atuacao', 'reflexos'],
+      choiceGroups: [
+        {
+          choose: 6,
+          options: [
+            'acrobacia',
+            'cavalgar',
+            'conhecimento',
+            'diplomacia',
+            'enganacao',
+            'furtividade',
+            'iniciativa',
+            'intuicao',
+            'investigacao',
+            'jogatina',
+            'ladinagem',
+            'luta',
+            'misticismo',
+            'nobreza',
+            'percepcao',
+            'pontaria',
+            'vontade',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armas marciais'],
+  },
+  {
+    id: 'bucaneiro',
+    name: 'Bucaneiro',
+    hitDie: 10,
+    mainAttr: 'destreza',
+    hp: { initial: 16, perLevel: 4 },
+    mpPerLevel: 3,
+    skillTraining: {
+      mandatory: ['reflexos'],
+      choiceGroups: [
+        { choose: 1, options: ['luta', 'pontaria'] },
+        {
+          choose: 4,
+          options: [
+            'acrobacia',
+            'atletismo',
+            'atuacao',
+            'enganacao',
+            'fortitude',
+            'furtividade',
+            'iniciativa',
+            'intimidacao',
+            'jogatina',
+            'luta',
+            'oficio',
+            'percepcao',
+            'pilotagem',
+            'pontaria',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armas marciais'],
+  },
+  {
+    id: 'cacador',
+    name: 'Caçador',
+    hitDie: 10,
+    mainAttr: 'destreza',
+    hp: { initial: 16, perLevel: 4 },
+    mpPerLevel: 4,
+    skillTraining: {
+      mandatory: ['sobrevivencia'],
+      choiceGroups: [
+        { choose: 1, options: ['luta', 'pontaria'] },
+        {
+          choose: 6,
+          options: [
+            'adestramento',
+            'atletismo',
+            'cavalgar',
+            'cura',
+            'fortitude',
+            'furtividade',
+            'iniciativa',
+            'investigacao',
+            'luta',
+            'oficio',
+            'percepcao',
+            'pontaria',
+            'reflexos',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armas marciais', 'escudos'],
+  },
+  {
+    id: 'cavaleiro',
+    name: 'Cavaleiro',
+    hitDie: 10,
+    mainAttr: 'forca',
+    hp: { initial: 20, perLevel: 5 },
+    mpPerLevel: 3,
+    skillTraining: {
+      mandatory: ['fortitude', 'luta'],
+      choiceGroups: [
+        {
+          choose: 2,
+          options: [
+            'adestramento',
+            'atletismo',
+            'cavalgar',
+            'diplomacia',
+            'guerra',
+            'iniciativa',
+            'intimidacao',
+            'nobreza',
+            'percepcao',
+            'vontade',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armas marciais', 'armaduras pesadas', 'escudos'],
+  },
+  {
+    id: 'clerigo',
+    name: 'Clérigo',
+    hitDie: 8,
+    mainAttr: 'sabedoria',
+    hp: { initial: 16, perLevel: 4 },
+    mpPerLevel: 5,
+    skillTraining: {
+      mandatory: ['religiao', 'vontade'],
+      choiceGroups: [
+        {
+          choose: 2,
+          options: [
+            'conhecimento',
+            'cura',
+            'diplomacia',
+            'fortitude',
+            'iniciativa',
+            'intuicao',
+            'luta',
+            'misticismo',
+            'nobreza',
+            'oficio',
+            'percepcao',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armaduras pesadas', 'escudos'],
+  },
+  {
+    id: 'druida',
+    name: 'Druida',
+    hitDie: 8,
+    mainAttr: 'sabedoria',
+    hp: { initial: 16, perLevel: 4 },
+    mpPerLevel: 4,
+    skillTraining: {
+      mandatory: ['sobrevivencia', 'vontade'],
+      choiceGroups: [
+        {
+          choose: 4,
+          options: [
+            'adestramento',
+            'atletismo',
+            'cavalgar',
+            'conhecimento',
+            'cura',
+            'fortitude',
+            'iniciativa',
+            'intuicao',
+            'luta',
+            'misticismo',
+            'oficio',
+            'percepcao',
+            'religiao',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['escudos'],
+  },
+  {
+    id: 'guerreiro',
+    name: 'Guerreiro',
+    hitDie: 10,
+    mainAttr: 'forca',
+    hp: { initial: 20, perLevel: 5 },
+    mpPerLevel: 3,
+    skillTraining: {
+      mandatory: ['fortitude'],
+      choiceGroups: [
+        { choose: 1, options: ['luta', 'pontaria'] },
+        {
+          choose: 2,
+          options: [
+            'adestramento',
+            'atletismo',
+            'cavalgar',
+            'guerra',
+            'iniciativa',
+            'intimidacao',
+            'luta',
+            'oficio',
+            'percepcao',
+            'pontaria',
+            'reflexos',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armas marciais', 'armaduras pesadas', 'escudos'],
+  },
+  {
+    id: 'inventor',
+    name: 'Inventor',
+    hitDie: 8,
+    mainAttr: 'inteligencia',
+    hp: { initial: 12, perLevel: 3 },
+    mpPerLevel: 4,
+    skillTraining: {
+      mandatory: ['oficio', 'vontade'],
+      choiceGroups: [
+        {
+          choose: 4,
+          options: [
+            'conhecimento',
+            'cura',
+            'diplomacia',
+            'fortitude',
+            'iniciativa',
+            'investigacao',
+            'luta',
+            'misticismo',
+            'oficio',
+            'pilotagem',
+            'percepcao',
+            'pontaria',
+          ],
+        },
+      ],
+    },
+    proficiencies: [],
+  },
+  {
+    id: 'ladino',
+    name: 'Ladino',
+    hitDie: 8,
+    mainAttr: 'destreza',
+    hp: { initial: 12, perLevel: 3 },
+    mpPerLevel: 4,
+    skillTraining: {
+      mandatory: ['ladinagem', 'reflexos'],
+      choiceGroups: [
+        {
+          choose: 8,
+          options: [
+            'acrobacia',
+            'atletismo',
+            'atuacao',
+            'cavalgar',
+            'conhecimento',
+            'diplomacia',
+            'enganacao',
+            'furtividade',
+            'iniciativa',
+            'intimidacao',
+            'intuicao',
+            'investigacao',
+            'jogatina',
+            'luta',
+            'oficio',
+            'percepcao',
+            'pilotagem',
+            'pontaria',
+          ],
+        },
+      ],
+    },
+    proficiencies: [],
+  },
+  {
+    id: 'lutador',
+    name: 'Lutador',
+    hitDie: 10,
+    mainAttr: 'destreza',
+    hp: { initial: 20, perLevel: 5 },
+    mpPerLevel: 3,
+    skillTraining: {
+      mandatory: ['fortitude', 'luta'],
+      choiceGroups: [
+        {
+          choose: 4,
+          options: [
+            'acrobacia',
+            'adestramento',
+            'atletismo',
+            'enganacao',
+            'furtividade',
+            'iniciativa',
+            'intimidacao',
+            'oficio',
+            'percepcao',
+            'pontaria',
+            'reflexos',
+          ],
+        },
+      ],
+    },
+    proficiencies: [],
+  },
+  {
+    id: 'nobre',
+    name: 'Nobre',
+    hitDie: 8,
+    mainAttr: 'carisma',
+    hp: { initial: 16, perLevel: 4 },
+    mpPerLevel: 4,
+    skillTraining: {
+      mandatory: ['vontade'],
+      choiceGroups: [
+        { choose: 1, options: ['diplomacia', 'intimidacao'] },
+        {
+          choose: 4,
+          options: [
+            'adestramento',
+            'atuacao',
+            'cavalgar',
+            'conhecimento',
+            'diplomacia',
+            'enganacao',
+            'fortitude',
+            'guerra',
+            'iniciativa',
+            'intimidacao',
+            'intuicao',
+            'investigacao',
+            'jogatina',
+            'luta',
+            'nobreza',
+            'oficio',
+            'percepcao',
+            'pontaria',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armas marciais', 'armaduras pesadas', 'escudos'],
+  },
+  {
+    id: 'paladino',
+    name: 'Paladino',
+    hitDie: 10,
+    mainAttr: 'carisma',
+    hp: { initial: 20, perLevel: 5 },
+    mpPerLevel: 3,
+    skillTraining: {
+      mandatory: ['luta', 'vontade'],
+      choiceGroups: [
+        {
+          choose: 2,
+          options: [
+            'adestramento',
+            'atletismo',
+            'cavalgar',
+            'cura',
+            'diplomacia',
+            'fortitude',
+            'guerra',
+            'iniciativa',
+            'intuicao',
+            'nobreza',
+            'percepcao',
+            'religiao',
+          ],
+        },
+      ],
+    },
+    proficiencies: ['armas marciais', 'armaduras pesadas', 'escudos'],
+  },
 ];
 
 /**

@@ -61,3 +61,20 @@ O aplicativo deve ser simples e direto, com fluxos de uso claros para jogadores 
 - Permissões claras quando o app utilizar sensores (microfone, etc.) ou compartilhar dados.
 
 Esses fluxos servem como referência para a interação do usuário — durante o desenvolvimento, cada fluxo deve ser detalhado em telas e protótipos para validação com usuários.
+
+## Instruções para o GitHub Copilot
+
+Use as informações acima para ajudar a completar o código do aplicativo Tormenta 20. Considere os demais arquivos presentes em .github/instructions para mais detalhes sobre cada página em particular. Sempre que desenvolvido nova feature ou alterado premissas da documentação, atualize a respectiva documentação.
+
+- As práticas de desenvolvimento devem balizar suas respostas
+- Utilizar bootstrap
+- Faça funções modulares e reaproveitáveis
+- O código deve possuir separação de responsabilidade e não deve ter redundância. Se uma função já existe num arquivo, use ela em vez de criar outra igual
+- No início de cada arquivo adicione uma descrição formal em comentário de como aquele arquivo funciona, de forma bem descritiva e explicando o fluxo de dados e iterações existentes nele
+- Comente o código em locais importantes e estratégicos
+- Antes de escrever o código da função, analise e identifique quais funções devem receber o novo código e produza código somente delas
+- Para este contexto em especifico, devem ser feitos questionamentos quando necessários para esclarecer dúvidas do sistema ou de informações não fornecidas, apesar das instruções anteriores, sendo permitido até mais de uma questão por response para maior agilidade.
+- Caso identifique uma função ou trecho que existe mas não recebeu o código dela NÃO DEVE PROSSEGUIR, não deduza parametros ou retornos e não suponha o que faz, leia o arquivo para saber sobre a função IMEDIATAMENTE
+- Sempre mantenha a documentação relativa ao que está desenvolvendo no seu contexto
+
+# Você deve respeitar todas as regras sem exceção!

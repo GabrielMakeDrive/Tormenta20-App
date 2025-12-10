@@ -1,8 +1,55 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header, CharacterCard, Button } from '../../components';
-import { loadCharacters, deleteCharacter } from '../../services';
+import { loadCharacters, saveCharacters } from '../../services';
 import './CharacterList.css';
+
+const sortCharactersByFavorite = (list) => {
+  return [...list].sort((a, b) => {
+    if (!!a.isFavorite === !!b.isFavorite) {
+      return 0;
+    }
+    return a.isFavorite ? -1 : 1;
+  });
+};
+
+const applyFavoriteRules = (characters) => {
+  if (!characters.length) {
+    return { list: characters, changed: false };
+  }
+
+  let changed = false;
+  const sanitized = characters.map((char) => {
+    if (typeof char.isFavorite === 'boolean') {
+      return char;
+    }
+    changed = true;
+    return { ...char, isFavorite: false };
+  });
+
+  if (sanitized.length === 1) {
+    const onlyChar = sanitized[0];
+    if (!onlyChar.isFavorite) {
+      return { list: [{ ...onlyChar, isFavorite: true }], changed: true };
+    }
+    return { list: sanitized, changed };
+  }
+
+  let favoriteFound = false;
+  const normalized = sanitized.map((char) => {
+    if (char.isFavorite) {
+      if (!favoriteFound) {
+        favoriteFound = true;
+        return char;
+      }
+      changed = true;
+      return { ...char, isFavorite: false };
+    }
+    return char;
+  });
+
+  return { list: normalized, changed };
+};
 
 function CharacterList() {
   const navigate = useNavigate();
@@ -10,16 +57,32 @@ function CharacterList() {
 
   useEffect(() => {
     const loaded = loadCharacters();
-    setCharacters(loaded);
+    const { list, changed } = applyFavoriteRules(loaded);
+    const sorted = sortCharactersByFavorite(list);
+    if (changed) {
+      saveCharacters(sorted);
+    }
+    setCharacters(sorted);
   }, []);
 
-  const handleDelete = (id, e) => {
-    e.stopPropagation();
-    if (window.confirm('Deseja realmente excluir este personagem?')) {
-      deleteCharacter(id);
-      setCharacters(characters.filter(c => c.id !== id));
-    }
+  const handleFavoriteToggle = (id) => {
+    setCharacters((prev) => {
+      const updated = prev.map((char) => {
+        if (char.id === id) {
+          if (char.isFavorite) {
+            return char;
+          }
+          return { ...char, isFavorite: true };
+        }
+        return char.isFavorite ? { ...char, isFavorite: false } : char;
+      });
+      const sorted = sortCharactersByFavorite(updated);
+      saveCharacters(sorted);
+      return sorted;
+    });
   };
+
+  const showFavoriteToggle = characters.length > 1;
 
   return (
     <div className="page character-list-page">
@@ -48,18 +111,13 @@ function CharacterList() {
         ) : (
           <div className="characters-list">
             {characters.map((char) => (
-              <div key={char.id} className="character-item">
-                <CharacterCard 
-                  character={char}
-                  onClick={() => navigate(`/characters/${char.id}`)}
-                />
-                <button 
-                  className="delete-btn"
-                  onClick={(e) => handleDelete(char.id, e)}
-                >
-                  🗑️
-                </button>
-              </div>
+              <CharacterCard 
+                key={char.id}
+                character={char}
+                onClick={() => navigate(`/characters/${char.id}`)}
+                showFavoriteToggle={showFavoriteToggle}
+                onFavoriteToggle={() => handleFavoriteToggle(char.id)}
+              />
             ))}
           </div>
         )}

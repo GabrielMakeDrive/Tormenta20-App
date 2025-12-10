@@ -100,6 +100,25 @@ function Settings() {
           </div>
         </section>
 
+        {/* Depuração */}
+        <section className="settings-section">
+          <h3>Depuração</h3>
+          <div className="setting-item">
+            <div className="setting-info">
+              <span className="setting-label">🐞 Notificações de Debug</span>
+              <span className="setting-desc">Mostra logs do console como alertas no app</span>
+            </div>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={Boolean(settings.debugNotificationsEnabled)}
+                onChange={(e) => handleSettingChange('debugNotificationsEnabled', e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
+        </section>
+
         {/* Dados */}
         <section className="settings-section">
           <h3>Dados</h3>
@@ -148,7 +167,7 @@ function Settings() {
           <h3>Sobre</h3>
           <div className="about-info">
             <p><strong>Tormenta 20 App</strong></p>
-            <p>Versão 1.0.0</p>
+            <p>Versão 1.0.1</p>
             <p className="disclaimer">
               Este aplicativo é um projeto de fã e não possui afiliação oficial com a Jambô Editora ou os criadores de Tormenta 20.
             </p>

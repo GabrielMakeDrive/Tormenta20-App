@@ -1,4 +1,6 @@
 export { default as BottomNav } from './BottomNav/BottomNav';
+export { default as DebugNotifier } from './DebugNotifier/DebugNotifier';
+export { default as InstallPrompt } from './InstallPrompt/InstallPrompt';
 export { default as Header } from './Header/Header';
 export { default as CharacterCard } from './CharacterCard/CharacterCard';
 export { default as Button } from './Button/Button';

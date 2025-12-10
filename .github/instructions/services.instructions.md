@@ -127,7 +127,7 @@ Gera objeto completo para backup.
   rollHistory: [...],
   settings: {...},
   exportedAt: 'ISO timestamp',
-  version: '1.0.0'
+  version: '1.0.1'
 }
 ```
 
@@ -140,6 +140,19 @@ if (result.success) {
   // Dados importados
 }
 ```
+
+### Eventos
+- `SETTINGS_UPDATE_EVENT`: emitido após qualquer `saveSettings()` bem-sucedido para permitir que componentes reajam em tempo real.
+- Sempre despache este evento no browser principal (usar `CustomEvent`).
+
+---
+
+## Persistência (Storage API)
+
+- O serviço deve expor helpers para verificar e solicitar armazenamento persistente usando `navigator.storage`.
+- `isPersistentStorageEnabled()` retorna uma *Promise<boolean>* que indica se o modo persistente já está ativo (ou *false* em navegadores sem suporte).
+- `ensurePersistentStorage()` tenta habilitar o modo persistente (quando suportado) e nunca deve lançar erros para a UI, retornando `{ supported, persisted }`.
+- A aplicação precisa chamar `ensurePersistentStorage()` durante a inicialização para minimizar o risco de eviction automático dos dados pelo navegador.
 
 ---
 

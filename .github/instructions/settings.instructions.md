@@ -44,8 +44,14 @@ Tela de configurações do aplicativo com opções de personalização, backup d
 
 ### 4. Sobre
 - Nome do aplicativo
-- Versão atual (1.0.0)
+- Versão atual (1.0.1)
 - Disclaimer sobre não afiliação oficial
+
+### 5. Depuração
+- **Notificações de Debug**: Toggle para exibir logs do console como toasts
+  - Desativado por padrão
+  - Útil para depurar builds instalados em dispositivos móveis
+  - Quando ligado, o componente `DebugNotifier` deve captar logs automaticamente
 
 ## Componentes Utilizados
 - `Header` - Título da página
@@ -69,7 +75,7 @@ Tela de configurações do aplicativo com opções de personalização, backup d
     "vibrationEnabled": true
   },
   "exportedAt": "2024-01-01T00:00:00.000Z",
-  "version": "1.0.0"
+  "version": "1.0.1"
 }
 ```
 
