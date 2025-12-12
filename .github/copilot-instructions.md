@@ -54,6 +54,8 @@ O aplicativo deve ser simples e direto, com fluxos de uso claros para jogadores 
 - Feedback imediato e visível para salvar/erro (toasts, banners ou modais não intrusivos).
 - Operações offline e sincronização local confiável — PWA com armazenamento persistente.
 - Acessibilidade básica: textos legíveis, foco em contraste, e suporte a navegação por teclado quando aplicável.
+- Os estilos unificados estão em styles/global.css e devem ser seguidos sempre que possível.
+- Não utilizar cores fora das variáveis definidas.
 
 ### Considerações de segurança e privacidade
 
@@ -76,5 +78,6 @@ Use as informações acima para ajudar a completar o código do aplicativo Torme
 - Para este contexto em especifico, devem ser feitos questionamentos quando necessários para esclarecer dúvidas do sistema ou de informações não fornecidas, apesar das instruções anteriores, sendo permitido até mais de uma questão por response para maior agilidade.
 - Caso identifique uma função ou trecho que existe mas não recebeu o código dela NÃO DEVE PROSSEGUIR, não deduza parametros ou retornos e não suponha o que faz, leia o arquivo para saber sobre a função IMEDIATAMENTE
 - Sempre mantenha a documentação relativa ao que está desenvolvendo no seu contexto
+- Quando ocorrer um erro devido a premissa errada ou falta de informação, deve ser documentado a premissa corrigida ou a informação faltante para futuras consultas
 
 # Você deve respeitar todas as regras sem exceção!

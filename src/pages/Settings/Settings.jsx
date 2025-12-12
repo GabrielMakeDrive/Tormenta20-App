@@ -98,6 +98,20 @@ function Settings() {
               <span className="toggle-slider"></span>
             </label>
           </div>
+          <div className="setting-item">
+            <div className="setting-info">
+              <span className="setting-label">🔊 Som</span>
+              <span className="setting-desc">Tocar sons de efeito (ex: moedas)</span>
+            </div>
+            <label className="toggle">
+              <input
+                type="checkbox"
+                checked={settings.soundEnabled !== false} // Padrão true
+                onChange={(e) => handleSettingChange('soundEnabled', e.target.checked)}
+              />
+              <span className="toggle-slider"></span>
+            </label>
+          </div>
         </section>
 
         {/* Depuração */}

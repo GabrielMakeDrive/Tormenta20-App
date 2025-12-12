@@ -7,3 +7,5 @@ export { default as Button } from './Button/Button';
 export { default as DiceButton } from './DiceButton/DiceButton';
 export { default as Toast } from './Toast/Toast';
 export { default as Modal } from './Modal/Modal';
+export { default as MoneyEditor } from './MoneyEditor/MoneyEditor';
+export { default as CoinRain } from './MoneyEditor/CoinRain';

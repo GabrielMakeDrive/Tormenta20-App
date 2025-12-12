@@ -4,8 +4,8 @@
  * perícias, recursos) em tempo real na UI.
  */
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Header, Button, Toast } from '../../components';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
+import { Header, Button, Toast, MoneyEditor } from '../../components';
 import { getCharacterById, saveCharacter } from '../../services';
 import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition } from '../../models';
 import './CharacterDetail.css';
@@ -33,9 +33,16 @@ const ATTRIBUTE_LABELS = {
 function CharacterDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const location = useLocation();
   const [character, setCharacter] = useState(null);
   const [activeTab, setActiveTab] = useState('stats');
   const [toast, setToast] = useState(null);
+
+  useEffect(() => {
+    if (location.state?.toast) {
+      setToast(location.state.toast);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     const loaded = getCharacterById(id);
@@ -177,7 +184,16 @@ function CharacterDetail() {
           </div>
           <div className="stat-box">
             <span className="stat-label">T$</span>
-            <span className="stat-value">{character.money}</span>
+            <MoneyEditor 
+              value={character.money} 
+              label=""
+              className="stat-value"
+              onSave={(newMoney) => {
+                const updated = { ...character, money: newMoney };
+                setCharacter(updated);
+                saveCharacter(updated);
+              }}
+            />
           </div>
         </section>
 

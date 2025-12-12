@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Header, CharacterCard, Button } from '../../components';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { Header, CharacterCard, Button, Toast } from '../../components';
 import { loadCharacters, saveCharacters } from '../../services';
 import './CharacterList.css';
 
@@ -53,7 +53,9 @@ const applyFavoriteRules = (characters) => {
 
 function CharacterList() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [characters, setCharacters] = useState([]);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => {
     const loaded = loadCharacters();
@@ -64,6 +66,12 @@ function CharacterList() {
     }
     setCharacters(sorted);
   }, []);
+
+  useEffect(() => {
+    if (location.state?.toast) {
+      setToast(location.state.toast);
+    }
+  }, [location.state]);
 
   const handleFavoriteToggle = (id) => {
     setCharacters((prev) => {
@@ -134,6 +142,8 @@ function CharacterList() {
           </div>
         )}
       </main>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }

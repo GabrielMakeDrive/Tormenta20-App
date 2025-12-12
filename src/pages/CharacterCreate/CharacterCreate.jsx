@@ -5,18 +5,17 @@
  */
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
-import { Header, Button, Toast } from '../../components';
+import { Header, Button, Toast, Modal } from '../../components';
 import { 
   createCharacter, 
   RACES, 
   CLASSES, 
   SKILLS,
-  TALENTS,
   getTalentsForClass,
   calculateMaxHp,
   calculateMaxMp,
 } from '../../models';
-import { saveCharacter, getCharacterById } from '../../services';
+import { saveCharacter, getCharacterById, deleteCharacter } from '../../services';
 import './CharacterCreate.css';
 
 const CHARACTER_ICONS = ['⚔️', '🛡️', '🏹', '🔮', '📖', '🗡️', '🪓', '🎭', '👑', '🐉'];
@@ -95,18 +94,6 @@ const getMandatorySkills = (characterClass) => {
   return characterClass.skillTraining.mandatory;
 };
 
-const getAvailableSkillChoices = (characterClass) => {
-  if (!characterClass?.skillTraining?.choiceGroups) {
-    return [];
-  }
-  return characterClass.skillTraining.choiceGroups.flatMap(group => group.options);
-};
-
-const getGroupForSkill = (characterClass, skillId) => {
-  if (!characterClass?.skillTraining?.choiceGroups) return -1;
-  return characterClass.skillTraining.choiceGroups.findIndex(group => group.options.includes(skillId));
-};
-
 const sanitizeAttributesForForm = (attributes = {}) => {
   return Object.keys(ATTRIBUTE_LABELS).reduce((acc, key) => {
     const rawValue = Number(attributes?.[key]);
@@ -138,9 +125,10 @@ function CharacterCreate({ mode = 'create' }) {
   const [formData, setFormData] = useState(() => createInitialFormData());
   const [originalCharacter, setOriginalCharacter] = useState(null);
   const [isLoading, setIsLoading] = useState(isEditMode);
-  const [expandedGroup, setExpandedGroup] = useState(null);
-  const [completedGroups, setCompletedGroups] = useState(new Set());
+  const [activeGroupIndex, setActiveGroupIndex] = useState(0);
+  const [isSelectingSkills, setIsSelectingSkills] = useState(false);
   const [selectedSkillsByGroup, setSelectedSkillsByGroup] = useState({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   useEffect(() => {
     if (!isEditMode) {
@@ -196,14 +184,18 @@ function CharacterCreate({ mode = 'create' }) {
       }
     });
 
-    // Determine completed groups
-    const newCompletedGroups = new Set();
-    choiceGroups.forEach((group, index) => {
-      const groupSelected = newSelectedSkillsByGroup[index] || new Set();
-      if (groupSelected.size === group.choose) {
-        newCompletedGroups.add(index);
+    // Determine active group
+    let newActiveGroupIndex = 0;
+    let allGroupsCompleted = true;
+    for (let i = 0; i < choiceGroups.length; i++) {
+      const group = choiceGroups[i];
+      const groupSelected = newSelectedSkillsByGroup[i] || new Set();
+      if (groupSelected.size < group.choose) {
+        newActiveGroupIndex = i;
+        allGroupsCompleted = false;
+        break;
       }
-    });
+    }
 
     setFormData({
       name: existing.name || '',
@@ -216,7 +208,8 @@ function CharacterCreate({ mode = 'create' }) {
       talents: existing.talents || [],
     });
     setSelectedSkillsByGroup(newSelectedSkillsByGroup);
-    setCompletedGroups(newCompletedGroups);
+    setActiveGroupIndex(newActiveGroupIndex);
+    setIsSelectingSkills(!isEditMode && !allGroupsCompleted);
     setIsLoading(false);
   }, [isEditMode, routeCharacterId, navigate]);
 
@@ -270,16 +263,21 @@ function CharacterCreate({ mode = 'create' }) {
   };
 
   const handleChange = (field, value) => {
+    console.log('handleChange', field, value);
     setFormData(prev => {
       if (field === 'level') {
         return { ...prev, level: clampLevelValue(value) };
       }
       if (field === 'characterClass') {
         // Reset skills and talents when class changes
-        setExpandedGroup(null);
-        setCompletedGroups(new Set());
+        setActiveGroupIndex(0);
+        setIsSelectingSkills(true);
         setSelectedSkillsByGroup({});
-        return { ...prev, [field]: value, skills: [], talents: [] };
+        
+        const newClassDef = CLASSES.find(c => c.id === value);
+        const mandatory = getMandatorySkills(newClassDef);
+
+        return { ...prev, [field]: value, skills: mandatory, talents: [] };
       }
       return { ...prev, [field]: value };
     });
@@ -306,8 +304,9 @@ function CharacterCreate({ mode = 'create' }) {
   };
 
   const handleSkillToggle = (skillId) => {
-    const groupIndex = getGroupForSkill(selectedClassDefinition, skillId);
-    if (groupIndex === -1) return;
+    console.log('Toggling skill:', skillId);
+    const groupIndex = activeGroupIndex;
+    if (!selectedClassDefinition?.skillTraining?.choiceGroups?.[groupIndex]) return;
     
     const group = selectedClassDefinition.skillTraining.choiceGroups[groupIndex];
     
@@ -320,7 +319,6 @@ function CharacterCreate({ mode = 'create' }) {
         newGroupSelected.delete(skillId);
       } else {
         if (currentGroupSelected.size >= group.choose) {
-          setToast({ message: `Você já selecionou o máximo para este grupo (${group.choose}).`, type: 'error' });
           return prevSelected;
         }
         newGroupSelected = new Set(currentGroupSelected);
@@ -329,24 +327,51 @@ function CharacterCreate({ mode = 'create' }) {
       
       const newSelected = { ...prevSelected, [groupIndex]: newGroupSelected };
       
-      // Update completed groups
-      if (newGroupSelected.size === group.choose && !completedGroups.has(groupIndex)) {
-        setCompletedGroups(prevComp => new Set([...prevComp, groupIndex]));
-        setExpandedGroup(null);
-      } else if (newGroupSelected.size < group.choose && completedGroups.has(groupIndex)) {
-        setCompletedGroups(prevComp => {
-          const newSet = new Set(prevComp);
-          newSet.delete(groupIndex);
-          return newSet;
-        });
-      }
-      
       // Update global skills
-      const newGlobalSkills = [...new Set(Object.values(newSelected).flatMap(set => Array.from(set || [])))];
+      const mandatory = getMandatorySkills(selectedClassDefinition);
+      const choiceSkills = Object.values(newSelected).flatMap(set => Array.from(set || []));
+      const newGlobalSkills = [...new Set([...mandatory, ...choiceSkills])];
       setFormData(prevForm => ({ ...prevForm, skills: newGlobalSkills }));
       
       return newSelected;
     });
+  };
+
+  const handleConfirmGroup = () => {
+    const group = selectedClassDefinition.skillTraining.choiceGroups[activeGroupIndex];
+    const groupSelected = selectedSkillsByGroup[activeGroupIndex] || new Set();
+    
+    if (groupSelected.size !== group.choose) {
+      setToast({ message: `Selecione exatamente ${group.choose} perícia(s) para continuar.`, type: 'error' });
+      return;
+    }
+
+    const nextIndex = activeGroupIndex + 1;
+    if (nextIndex < selectedClassDefinition.skillTraining.choiceGroups.length) {
+      setActiveGroupIndex(nextIndex);
+    } else {
+      setIsSelectingSkills(false);
+    }
+  };
+
+  const handleEditSkills = () => {
+    const mandatory = getMandatorySkills(selectedClassDefinition);
+    setFormData(prev => ({ ...prev, skills: mandatory }));
+    setSelectedSkillsByGroup({});
+    setActiveGroupIndex(0);
+    setIsSelectingSkills(true);
+  };
+
+  const handleDelete = () => {
+    setShowDeleteModal(true);
+  };
+
+  const confirmDelete = () => {
+    if (!originalCharacter) return;
+    deleteCharacter(originalCharacter.id);
+    setShowDeleteModal(false);
+    setToast({ message: 'Personagem excluído com sucesso!', type: 'success' });
+    setTimeout(() => navigate('/characters'), 800);
   };
 
   const handleTalentToggle = (talentId) => {
@@ -402,19 +427,16 @@ function CharacterCreate({ mode = 'create' }) {
     const currentSkills = formData.skills || [];
     const missingMandatory = mandatorySkills.filter(skill => !currentSkills.includes(skill));
     if (missingMandatory.length > 0) {
+      console.log('Missing mandatory skills:', missingMandatory);
+      console.log('Current skills:', currentSkills);
       setToast({ message: 'Todas as perícias obrigatórias devem estar selecionadas.', type: 'error' });
       return;
     }
 
     // Validar grupos de escolha
-    const choiceGroups = selectedClassDefinition.skillTraining.choiceGroups || [];
-    for (let i = 0; i < choiceGroups.length; i++) {
-      const group = choiceGroups[i];
-      const groupSelected = selectedSkillsByGroup[i] || new Set();
-      if (groupSelected.size !== group.choose) {
-        setToast({ message: `Grupo ${i + 1}: Selecione exatamente ${group.choose} perícia(s).`, type: 'error' });
-        return;
-      }
+    if (!isEditMode && isSelectingSkills) {
+      setToast({ message: 'Conclua a seleção de perícias antes de salvar.', type: 'error' });
+      return;
     }
 
     const normalizedCharacter = {
@@ -458,7 +480,7 @@ function CharacterCreate({ mode = 'create' }) {
       saveCharacter(updatedCharacter);
       setToast({ message: 'Personagem atualizado com sucesso!', type: 'success' });
       setTimeout(() => {
-        navigate(`/characters/${updatedCharacter.id}`);
+        navigate(`/characters/${updatedCharacter.id}`, { state: { toast: { message: 'Personagem atualizado com sucesso!', type: 'success' } } });
       }, 800);
       return;
     }
@@ -480,13 +502,25 @@ function CharacterCreate({ mode = 'create' }) {
     setToast({ message: 'Personagem criado com sucesso!', type: 'success' });
     
     setTimeout(() => {
-      navigate(`/characters/${character.id}`);
+      navigate(`/characters/${character.id}`, { state: { toast: { message: 'Personagem criado com sucesso!', type: 'success' } } });
     }, 1000);
   };
 
   return (
     <div className="page character-create-page">
-      <Header title={headerTitle} showBack />
+      <Header 
+        title={headerTitle} 
+        showBack 
+        rightAction={isEditMode ? (
+          <button 
+            className="header-btn delete-btn" 
+            onClick={handleDelete}
+            title="Excluir Personagem"
+          >
+            🗑️
+          </button>
+        ) : null}
+      />
       
       <main className="page-content">
         {isEditMode && isLoading ? (
@@ -641,96 +675,81 @@ function CharacterCreate({ mode = 'create' }) {
           {/* Perícias */}
           {selectedClassDefinition && (
             <section className="form-section">
-              <label className="form-label">Perícias Treinadas</label>
+              <div className="section-header">
+                <label className="form-label">Perícias Treinadas</label>
+                {!isSelectingSkills && (
+                  <button type="button" className="edit-btn" onClick={handleEditSkills}>
+                    Escolher novamente
+                  </button>
+                )}
+              </div>
+              
               <div className="skills-section">
-                <div className="mandatory-skills">
-                  <h4>Obrigatórias</h4>
-                  <div className="skills-list">
-                    {getMandatorySkills(selectedClassDefinition).map(skillId => {
-                      const skill = SKILLS.find(s => s.id === skillId);
-                      return skill ? (
-                        <div key={skillId} className="skill-item mandatory">
-                          <span className="skill-name">{skill.name}</span>
-                          <span className="skill-attr">({skill.attr})</span>
-                        </div>
-                      ) : null;
-                    })}
-                  </div>
-                </div>
-                <div className="choice-skills">
-                  <h4>Escolhas</h4>
-                  {selectedClassDefinition.skillTraining.choiceGroups.map((group, groupIndex) => {
-                    const isExpanded = expandedGroup === groupIndex;
-                    const isCompleted = completedGroups.has(groupIndex);
-                    const groupSelected = selectedSkillsByGroup[groupIndex] || new Set();
-                    const selectedCount = groupSelected.size;
-                    
-                    return (
-                      <div key={groupIndex} className="choice-group">
-                        {!isExpanded ? (
-                          <button
-                            type="button"
-                            className={`group-collapsed ${isCompleted ? 'completed' : ''}`}
-                            onClick={() => {
-                              if (isCompleted) {
-                                // Reset selections for this group
-                                setSelectedSkillsByGroup(prev => {
-                                  const newSelected = { ...prev };
-                                  delete newSelected[groupIndex];
-                                  const newGlobalSkills = [...new Set(Object.values(newSelected).flatMap(set => Array.from(set || [])))];
-                                  setFormData(prevForm => ({ ...prevForm, skills: newGlobalSkills }));
-                                  return newSelected;
-                                });
-                                setCompletedGroups(prev => {
-                                  const newSet = new Set(prev);
-                                  newSet.delete(groupIndex);
-                                  return newSet;
-                                });
-                              }
-                              setExpandedGroup(groupIndex);
-                            }}
-                          >
-                            <span className="group-label">Grupo {groupIndex + 1}: Escolha {group.choose}</span>
-                            <span className="group-status">
-                              {isCompleted ? `✓ ${selectedCount}/${group.choose}` : `${selectedCount}/${group.choose}`}
-                            </span>
-                            <span className="expand-icon">{isCompleted ? '🔄' : '▼'}</span>
-                          </button>
-                        ) : (
-                          <div className="group-expanded">
-                            <div className="group-header">
-                              Grupo {groupIndex + 1}: Escolha {group.choose} de:
-                              <button
-                                type="button"
-                                className="collapse-btn"
-                                onClick={() => setExpandedGroup(null)}
-                              >
-                                ▲
-                              </button>
-                            </div>
-                            <div className="skills-list">
-                              {group.options.map(skillId => {
-                                const skill = SKILLS.find(s => s.id === skillId);
-                                const isSelected = groupSelected.has(skillId);
-                                return skill ? (
-                                  <button
-                                    key={skillId}
-                                    type="button"
-                                    className={`skill-item choice ${isSelected ? 'selected' : ''}`}
-                                    onClick={() => handleSkillToggle(skillId)}
-                                  >
-                                    <span className="skill-name">{skill.name}</span>
-                                    <span className="skill-attr">({skill.attr})</span>
-                                  </button>
-                                ) : null;
-                              })}
-                            </div>
-                          </div>
-                        )}
+                {/* Lista de todas as perícias selecionadas */}
+                <div className="selected-skills-list">
+                  {formData.skills.map(skillId => {
+                    const skill = SKILLS.find(s => s.id === skillId);
+                    const isMandatory = getMandatorySkills(selectedClassDefinition).includes(skillId);
+                    return skill ? (
+                      <div key={skillId} className={`skill-tag ${isMandatory ? 'mandatory' : 'choice'}`}>
+                        <span className="skill-name">{skill.name}</span>
+                        <span className="skill-attr">({skill.attr})</span>
+                        {isMandatory && <span className="skill-badge">Classe</span>}
                       </div>
-                    );
+                    ) : null;
                   })}
                 </div>
+
+                {/* Área de seleção de perícias */}
+                {isSelectingSkills && selectedClassDefinition.skillTraining.choiceGroups[activeGroupIndex] && (
+                  <div className="skill-selection-area">
+                    <div className="selection-header">
+                      <h4>
+                        Escolha {selectedClassDefinition.skillTraining.choiceGroups[activeGroupIndex].choose} perícias
+                      </h4>
+                      <span className="selection-count">
+                        {(selectedSkillsByGroup[activeGroupIndex] || new Set()).size} / {selectedClassDefinition.skillTraining.choiceGroups[activeGroupIndex].choose}
+                      </span>
+                    </div>
+
+                    <div className="skills-grid">
+                      {selectedClassDefinition.skillTraining.choiceGroups[activeGroupIndex].options
+                        .filter(skillId => {
+                          // Show if not selected in previous steps (not in formData.skills)
+                          // OR if it is selected in THIS group (in selectedSkillsByGroup[activeGroupIndex])
+                          const isSelectedInThisGroup = (selectedSkillsByGroup[activeGroupIndex] || new Set()).has(skillId);
+                          const isAlreadySelected = formData.skills.includes(skillId);
+                          return !isAlreadySelected || isSelectedInThisGroup;
+                        })
+                        .map(skillId => {
+                          const skill = SKILLS.find(s => s.id === skillId);
+                          const isSelected = (selectedSkillsByGroup[activeGroupIndex] || new Set()).has(skillId);
+                          return skill ? (
+                            <button
+                              key={skillId}
+                              type="button"
+                              className={`skill-option-btn ${isSelected ? 'selected' : ''}`}
+                              onClick={() => handleSkillToggle(skillId)}
+                            >
+                              <span className="skill-name">{skill.name}</span>
+                              <span className="skill-attr">{skill.attr}</span>
+                            </button>
+                          ) : null;
+                        })}
+                    </div>
+
+                    <div className="selection-actions">
+                      <Button 
+                        type="button" 
+                        variant="secondary" 
+                        onClick={handleConfirmGroup}
+                        disabled={(selectedSkillsByGroup[activeGroupIndex] || new Set()).size !== selectedClassDefinition.skillTraining.choiceGroups[activeGroupIndex].choose}
+                      >
+                        {activeGroupIndex < selectedClassDefinition.skillTraining.choiceGroups.length - 1 ? 'Próximo' : 'Concluir'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             </section>
           )}
@@ -774,6 +793,22 @@ function CharacterCreate({ mode = 'create' }) {
           </form>
         )}
       </main>
+
+      <Modal 
+        isOpen={showDeleteModal} 
+        onClose={() => setShowDeleteModal(false)} 
+        title="Confirmar Exclusão"
+      >
+        <p>Tem certeza de que deseja excluir o personagem "{originalCharacter?.name}"? Esta ação não pode ser desfeita.</p>
+        <div className="modal-actions">
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={confirmDelete}>
+            Excluir
+          </Button>
+        </div>
+      </Modal>
 
       {toast && (
         <Toast 
