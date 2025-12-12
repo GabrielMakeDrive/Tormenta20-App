@@ -187,6 +187,7 @@ function CharacterDetail() {
             <MoneyEditor 
               value={character.money} 
               label=""
+              className="stat-value"
               onSave={(newMoney) => {
                 const updated = { ...character, money: newMoney };
                 setCharacter(updated);

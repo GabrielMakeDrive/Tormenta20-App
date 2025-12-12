@@ -7,7 +7,7 @@ import { Modal, Button, CoinRain } from '../../components';
 import { loadSettings } from '../../services';
 import './MoneyEditor.css';
 
-function MoneyEditor({ value, onSave, label = "" }) {
+function MoneyEditor({ value, onSave, label = "", className = "" }) {
   const [isOpen, setIsOpen] = useState(false);
   const [newValue, setNewValue] = useState(value);
   const [activeCoins, setActiveCoins] = useState([]);
@@ -58,7 +58,7 @@ function MoneyEditor({ value, onSave, label = "" }) {
 
   return (
     <>
-      <span className="money-display" onClick={() => setIsOpen(true)}>
+      <span className={`money-display ${className}`} onClick={() => setIsOpen(true)}>
         {label && `${label} `}{value}
       </span>
       <Modal isOpen={isOpen} onClose={handleCancel} title="Dinheiro">
