@@ -115,6 +115,7 @@ const createInitialFormData = () => ({
   attributes: { ...INITIAL_ATTRIBUTES },
   skills: [],
   talents: [],
+  experience: 0,
 });
 
 function CharacterCreate({ mode = 'create' }) {
@@ -203,6 +204,7 @@ function CharacterCreate({ mode = 'create' }) {
       race: existingRaceId,
       characterClass: existingClassId,
       level: clampLevelValue(existing.level || 1),
+      experience: Number(existing.experience || 0),
       attributes: sanitizedAttributes,
       skills: mergedSkills,
       talents: existing.talents || [],
@@ -448,6 +450,7 @@ function CharacterCreate({ mode = 'create' }) {
       attributes: { ...formData.attributes },
       skills: [...(formData.skills || [])],
       talents: [...(formData.talents || [])],
+      experience: Number(formData.experience || 0),
     };
 
     const fallbackHp = isEditMode ? (originalCharacter?.hp?.max ?? DEFAULT_HP) : DEFAULT_HP;
@@ -620,6 +623,20 @@ function CharacterCreate({ mode = 'create' }) {
                   +
                 </button>
               </div>
+            </div>
+          </section>
+
+          {/* XP */}
+          <section className="form-section">
+            <label className="form-label">XP Inicial</label>
+            <div className="xp-input-controls">
+              <input
+                type="number"
+                className="form-input"
+                min="0"
+                value={formData.experience}
+                onChange={(e) => handleChange('experience', e.target.value)}
+              />
             </div>
           </section>
 

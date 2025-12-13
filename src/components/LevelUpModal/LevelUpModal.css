@@ -1,0 +1,49 @@
+.level-up-modal {
+  text-align: center;
+  padding: 2rem;
+}
+
+.level-up-content {
+  margin-bottom: 2rem;
+}
+
+.level-display {
+  margin-bottom: 2rem;
+}
+
+.level-label {
+  display: block;
+  font-size: 1.5rem;
+  color: var(--text-secondary);
+  margin-bottom: 0.5rem;
+}
+
+.level-number {
+  display: block;
+  font-size: 5rem;
+  font-weight: bold;
+  color: var(--primary-color);
+  text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+.benefits-section h3 {
+  font-size: 1.25rem;
+  margin-bottom: 1rem;
+  color: var(--text-primary);
+}
+
+.benefits-list {
+  list-style: none;
+  padding: 0;
+  font-size: 1.1rem;
+  color: var(--text-primary);
+}
+
+.benefits-list li {
+  margin-bottom: 0.5rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: center;
+}

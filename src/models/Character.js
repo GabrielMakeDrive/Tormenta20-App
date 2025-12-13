@@ -329,6 +329,29 @@ export const getCharacterTotalAttributeValue = (characterLike, attrKey) => {
 };
 
 /**
+ * Obtém o XP restante para o próximo nível (total XP - XP mínimo do nível atual).
+ */
+export const getCharacterDisplayXp = (characterLike) => {
+  const level = characterLike?.level || 1;
+  const experience = characterLike?.experience || 0;
+  const currentLevelXp = LEVEL_PROGRESSION.find(l => l.level === level)?.experience || 0;
+  return Math.max(0, experience - currentLevelXp);
+};
+
+/**
+ * Calcula o nível baseado no XP total.
+ */
+export const getCharacterLevelFromXp = (experience) => {
+  const xp = Math.max(0, experience || 0);
+  for (let i = LEVEL_PROGRESSION.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_PROGRESSION[i].experience) {
+      return LEVEL_PROGRESSION[i].level;
+    }
+  }
+  return 1;
+};
+
+/**
  * Helpers para Talentos
  */
 export const getTalentsForClass = (classId) => {

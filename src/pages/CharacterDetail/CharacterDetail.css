@@ -211,6 +211,73 @@
   padding: 24px;
 }
 
+.xp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.xp-value {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.xp-modal label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.xp-input-section {
+  margin: 0;
+}
+
+.xp-input-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.xp-input {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.xp-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  background: var(--hover-color);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+}
+
+.xp-quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.xp-quick-actions .btn {
+  padding: 8px 10px;
+}
+
+.xp-modal {
+  padding: 8px 0 0 0;
+}
+
 .skills-list {
   display: flex;
   flex-direction: column;
