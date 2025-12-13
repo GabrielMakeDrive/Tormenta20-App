@@ -231,13 +231,18 @@ function CharacterDetail() {
                   const bonus = halfLevel + adjustedAttr + trainingBonus;
                   
                   return (
-                    <div key={skill.id} className={`skill-item ${trained ? 'trained' : ''}`}>
+                    <button
+                      key={skill.id}
+                      type="button"
+                      className={`skill-item ${trained ? 'trained' : ''}`}
+                      onClick={() => navigate('/dice', { state: { characterId: character.id, skillId: skill.id } })}
+                    >
                       <span className="skill-name">{skill.name}</span>
                       <span className="skill-attr">({ATTRIBUTE_LABELS[skill.attr]})</span>
                       <span className="skill-bonus">
                         {bonus >= 0 ? '+' : ''}{bonus}
                       </span>
-                    </div>
+                    </button>
                   );
                 })}
               </div>

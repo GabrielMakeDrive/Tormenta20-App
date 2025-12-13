@@ -1,20 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Header, Button, DiceButton, Toast } from '../../components';
 import { 
   DICE_TYPES, 
   performRoll, 
   SKILLS, 
-  LEVEL_PROGRESSION,
-  RACES,
   getCharacterTotalAttributeValue
 } from '../../models';
 import { 
   loadRollHistory, 
   addRollToHistory, 
   clearRollHistory, 
-  loadCharacters, 
-  getCharacterById 
+  loadCharacters
 } from '../../services';
 import './DiceRoller.css';
 
@@ -99,6 +96,8 @@ function DiceRoller() {
     }
   }, [location.state]);
 
+  
+
   const handleRoll = () => {
     setIsRolling(true);
     
@@ -148,7 +147,7 @@ function DiceRoller() {
     setToast({ message: `Configurado: Teste de ${attrLabel} (${attrValue >= 0 ? '+' : ''}${attrValue})`, type: 'info' });
   };
 
-  const setupSkillRoll = (skill) => {
+  const setupSkillRoll = useCallback((skill) => {
     if (!activeCharacter) return;
     
     const totalBonus = getSkillBonus(activeCharacter, skill);
@@ -162,7 +161,20 @@ function DiceRoller() {
     setIsSelectionExpanded(false);
     
     setToast({ message: `Configurado: ${skill.name} (${totalBonus >= 0 ? '+' : ''}${totalBonus})`, type: 'info' });
-  };
+  }, [activeCharacter]);
+
+  // If a skillId was passed via navigation state (e.g. from CharacterDetail), pre-configure the skill
+  useEffect(() => {
+    const skillId = location.state?.skillId;
+    if (!skillId || !activeCharacter) return;
+
+    const skill = SKILLS.find(s => s.id === skillId);
+    if (!skill) return;
+
+    // Switch to character mode and configure the roll with the selected skill
+    setRollMode('character');
+    setupSkillRoll(skill);
+  }, [activeCharacter, location.state?.skillId, setupSkillRoll]);
 
   const ATTRIBUTES = [
     { key: 'forca', label: 'Força', abbr: 'FOR' },
