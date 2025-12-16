@@ -47,6 +47,30 @@ const INITIAL_ATTRIBUTES = Object.keys(ATTRIBUTE_LABELS).reduce((acc, key) => {
 
 const formatAttributeValue = (value = 0) => (value > 0 ? `+${value}` : `${value}`);
 
+const formatPrerequisites = (prerequisites = []) => {
+  if (!Array.isArray(prerequisites)) return '';
+  
+  return prerequisites.map(req => {
+    if (typeof req === 'string') return req;
+    
+    switch (req.type) {
+      case 'attribute':
+        const attrLabel = ATTRIBUTE_LABELS[req.key] || req.key;
+        return `${attrLabel.substring(0, 3)} ${req.value}`;
+      case 'skill':
+        return `Treinado em ${req.value.charAt(0).toUpperCase() + req.value.slice(1)}`;
+      case 'level':
+        return `${req.value}º nível`;
+      case 'power':
+        return `Poder ${req.value}`;
+      case 'tag':
+        return `Poder de ${req.value}`;
+      default:
+        return req.label || '';
+    }
+  }).join(', ');
+};
+
 const getRaceAttributeBonus = (race, attrKey) => {
   if (!race) {
     return 0;
@@ -777,7 +801,9 @@ function CharacterCreate({ mode = 'create' }) {
               <label className="form-label">Poderes de Classe</label>
               <div className="talents-section">
                 <div className="talents-list">
-                  {getHabilidadesForClass(selectedClassDefinition.id).map(habilidade => {
+                  {getHabilidadesForClass(selectedClassDefinition.id)
+                    .filter(h => h.type === 'power')
+                    .map(habilidade => {
                     const isSelected = (formData.habilidades || []).some(h => h.id === habilidade.id);
                     return (
                       <button
@@ -790,7 +816,7 @@ function CharacterCreate({ mode = 'create' }) {
                         <div className="talent-header">
                           <span className="talent-name">{habilidade.name}</span>
                           {habilidade.prerequisites.length > 0 && (
-                            <span className="talent-prereq">Pré: {habilidade.prerequisites.join(', ')}</span>
+                            <span className="talent-prereq">Pré: {formatPrerequisites(habilidade.prerequisites)}</span>
                           )}
                         </div>
                         <div className="talent-desc">{habilidade.description}</div>

@@ -20,12 +20,36 @@ Objeto onde as chaves são os IDs das classes (ex: `cacador`, `guerreiro`) e os 
 ```javascript
 export const HABILIDADES = {
   cacador: [
+    // Habilidades de Classe (Padrão - Automáticas)
+    {
+      id: 'marca_presa',
+      name: 'Marca da Presa',
+      type: 'feature', // 'feature' = habilidade automática/padrão
+      level: 1,
+      description: 'Descrição...',
+      prerequisites: []
+    },
+    // Poderes de Classe (Selecionáveis)
     {
       id: 'ambidestria',
       name: 'Ambidestria',
-      description: 'Descrição completa da habilidade...',
-      prerequisites: ['Des 2'] // Array de strings com pré-requisitos
+      type: 'power', // 'power' = poder selecionável
+      description: 'Descrição...',
+      prerequisites: [
+        { type: 'attribute', key: 'destreza', value: 2 }
+      ]
     },
+    {
+      id: 'armadilheiro',
+      name: 'Armadilheiro',
+      type: 'power',
+      tags: ['armadilha'], // Tags para categorização e pré-requisitos
+      description: '...',
+      prerequisites: [
+        { type: 'tag', value: 'armadilha' }, // Requer outro poder com tag 'armadilha'
+        { type: 'level', value: 5 } // Requer nível 5 na classe
+      ]
+    }
     // ...
   ],
   // Outras classes iniciam com arrays vazios []
@@ -35,8 +59,19 @@ export const HABILIDADES = {
 ### Objeto Habilidade
 - `id`: Identificador único da habilidade (string, snake_case).
 - `name`: Nome de exibição (string).
+- `type`: Tipo da habilidade. `'feature'` (padrão da classe) ou `'power'` (poder selecionável).
+- `level`: (Opcional) Nível em que a habilidade é adquirida (para features) ou nível mínimo (para powers, embora redundante com prerequisites, pode ser usado para ordenação).
+- `tags`: (Opcional) Array de strings para categorizar poderes (ex: 'armadilha').
 - `description`: Descrição detalhada da regra (string).
-- `prerequisites`: Lista de pré-requisitos para exibição (array de strings).
+- `prerequisites`: Array de objetos definindo os requisitos.
+
+### Estrutura de Pré-requisitos
+Os pré-requisitos são objetos com a seguinte estrutura:
+- `{ type: 'attribute', key: 'atributo', value: valor }`: Requer valor mínimo no atributo.
+- `{ type: 'skill', value: 'pericia' }`: Requer treinamento na perícia.
+- `{ type: 'level', value: nivel }`: Requer nível mínimo na classe.
+- `{ type: 'power', value: 'id_poder' }`: Requer um poder específico.
+- `{ type: 'tag', value: 'tag_nome', count: 1 }`: Requer um (ou mais) poderes com a tag especificada.
 
 ### No Modelo de Personagem (Character.js)
 As habilidades escolhidas são armazenadas no array `habilidades` dentro do objeto `Character`.
@@ -57,15 +92,16 @@ character.habilidades = [
 
 ### 2. Seleção (CharacterCreate)
 - Durante a criação/edição de personagem, o usuário pode selecionar habilidades disponíveis para sua classe.
-- A interface deve permitir marcar/desmarcar habilidades (toggle).
+- A interface filtra e exibe apenas habilidades do tipo `power` para seleção.
+- A interface exibe os pré-requisitos formatados (ex: "Des 2", "5º nível").
 - Validações de pré-requisitos ainda não são automáticas (apenas informativas).
 
 ## Helpers Disponíveis (Character.js)
 
-- `getHabilidadesForClass(classId)`: Retorna o array de habilidades disponíveis para a classe informada. Retorna `[]` se a classe não tiver habilidades cadastradas.
+- `getHabilidadesForClass(classId)`: Retorna o array de habilidades disponíveis para a classe informada.
 - `getHabilidadeById(classId, habilidadeId)`: Busca uma habilidade específica dentro da lista da classe.
 
 ## Considerações
-- Atualmente, apenas a classe **Caçador** possui habilidades cadastradas como exemplo/implementação inicial.
-- As demais classes possuem arrays vazios e devem ser populadas conforme a evolução do projeto.
-- O sistema de pré-requisitos é atualmente apenas textual/informativo. Futuramente poderá haver validação lógica baseada nos atributos e nível do personagem.
+- Atualmente, apenas a classe **Caçador** possui habilidades cadastradas.
+- As demais classes devem seguir o novo padrão de estrutura (type, prerequisites como objetos).
+- O sistema de pré-requisitos suporta validação lógica futura baseada nos tipos definidos.
