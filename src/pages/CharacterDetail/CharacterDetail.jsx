@@ -92,11 +92,39 @@ function CharacterDetail() {
       return;
     }
     const added = Math.max(0, Math.floor(parsed));
-    const current = Number(character.experience || 0);
-    const newXp = Math.max(0, current + added);
+    const currentXp = Number(character.experience || 0);
+    const newXp = Math.max(0, currentXp + added);
     const newLevel = getCharacterLevelFromXp(newXp);
     const leveledUp = newLevel > character.level;
-    const updated = { ...character, experience: newXp, level: newLevel };
+    
+    let updated = { ...character, experience: newXp, level: newLevel };
+
+    if (leveledUp) {
+      const oldMaxHp = calculateMaxHp(character);
+      const oldMaxMp = calculateMaxMp(character);
+      const newMaxHp = calculateMaxHp(updated);
+      const newMaxMp = calculateMaxMp(updated);
+      
+      const hpDiff = newMaxHp - oldMaxHp;
+      const mpDiff = newMaxMp - oldMaxMp;
+
+      if (hpDiff > 0 || mpDiff > 0) {
+        updated = {
+          ...updated,
+          hp: { 
+            ...updated.hp, 
+            current: (updated.hp?.current || 0) + hpDiff,
+            max: newMaxHp
+          },
+          mp: { 
+            ...updated.mp, 
+            current: (updated.mp?.current || 0) + mpDiff,
+            max: newMaxMp
+          }
+        };
+      }
+    }
+
     setCharacter(updated);
     saveCharacter(updated);
     if (leveledUp) {
