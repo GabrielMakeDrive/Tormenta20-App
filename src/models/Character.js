@@ -362,3 +362,35 @@ export const getHabilidadeById = (classId, habilidadeId) => {
   const classHabilidades = getHabilidadesForClass(classId);
   return classHabilidades.find(t => t.id === habilidadeId) || null;
 };
+
+/**
+ * Verifica se o personagem atende aos pré-requisitos de uma habilidade.
+ */
+export const checkPrerequisites = (character, prerequisites = []) => {
+  if (!prerequisites || prerequisites.length === 0) return true;
+  
+  return prerequisites.every(req => {
+    if (typeof req === 'string') return true; // Ignora strings legadas
+    
+    switch (req.type) {
+      case 'attribute':
+        const attrValue = getTotalAttributeValue(character, req.key);
+        return attrValue >= req.value;
+      case 'skill':
+        return character.skills.includes(req.value);
+      case 'level':
+        return character.level >= req.value;
+      case 'power':
+        return character.habilidades.some(h => h.id === req.value);
+      case 'tag':
+        // Verifica se possui poderes com a tag específica
+        const ownedPowers = character.habilidades
+          .map(h => getHabilidadeById(character.characterClass, h.id))
+          .filter(Boolean);
+        const count = ownedPowers.filter(p => p.tags && p.tags.includes(req.value)).length;
+        return count >= (req.count || 1);
+      default:
+        return true;
+    }
+  });
+};

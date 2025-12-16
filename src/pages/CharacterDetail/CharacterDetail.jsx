@@ -152,6 +152,24 @@ function CharacterDetail() {
     });
   };
 
+  const handleSaveAbilities = (abilities) => {
+    if (!character || !abilities || abilities.length === 0) return;
+    
+    const newHabilidades = [...(character.habilidades || [])];
+    abilities.forEach(ability => {
+      if (!newHabilidades.some(h => h.id === ability.id)) {
+        newHabilidades.push({ id: ability.id, name: ability.name });
+      }
+    });
+
+    const updated = {
+      ...character,
+      habilidades: newHabilidades
+    };
+    setCharacter(updated);
+    saveCharacter(updated);
+  };
+
   if (!character) {
     return <div className="page">Carregando...</div>;
   }
@@ -395,6 +413,7 @@ function CharacterDetail() {
         isOpen={levelUpModalOpen}
         onClose={() => setLevelUpModalOpen(false)}
         character={character}
+        onSaveAbilities={handleSaveAbilities}
       />
 
       <Modal isOpen={xpModalOpen} onClose={() => setXpModalOpen(false)} title="Adicionar XP">
