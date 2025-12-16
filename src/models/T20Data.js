@@ -517,7 +517,7 @@ export const SKILLS = [
  * Lista de Talentos (Poderes de Classe)
  * Estrutura: { id, name, description, prerequisites: [] }
  */
-export const TALENTS = {
+export const HABILIDADES = {
   cacador: [
     {
       id: 'ambidestria',

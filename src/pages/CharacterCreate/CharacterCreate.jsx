@@ -11,7 +11,7 @@ import {
   RACES, 
   CLASSES, 
   SKILLS,
-  getTalentsForClass,
+  getHabilidadesForClass,
   calculateMaxHp,
   calculateMaxMp,
 } from '../../models';
@@ -114,7 +114,7 @@ const createInitialFormData = () => ({
   level: 1,
   attributes: { ...INITIAL_ATTRIBUTES },
   skills: [],
-  talents: [],
+  habilidades: [],
   experience: 0,
 });
 
@@ -207,7 +207,7 @@ function CharacterCreate({ mode = 'create' }) {
       experience: Number(existing.experience || 0),
       attributes: sanitizedAttributes,
       skills: mergedSkills,
-      talents: existing.talents || [],
+      habilidades: existing.habilidades || [],
     });
     setSelectedSkillsByGroup(newSelectedSkillsByGroup);
     setActiveGroupIndex(newActiveGroupIndex);
@@ -271,7 +271,7 @@ function CharacterCreate({ mode = 'create' }) {
         return { ...prev, level: clampLevelValue(value) };
       }
       if (field === 'characterClass') {
-        // Reset skills and talents when class changes
+        // Reset skills and habilidades when class changes
         setActiveGroupIndex(0);
         setIsSelectingSkills(true);
         setSelectedSkillsByGroup({});
@@ -279,7 +279,7 @@ function CharacterCreate({ mode = 'create' }) {
         const newClassDef = CLASSES.find(c => c.id === value);
         const mandatory = getMandatorySkills(newClassDef);
 
-        return { ...prev, [field]: value, skills: mandatory, talents: [] };
+        return { ...prev, [field]: value, skills: mandatory, habilidades: [] };
       }
       return { ...prev, [field]: value };
     });
@@ -376,24 +376,24 @@ function CharacterCreate({ mode = 'create' }) {
     setTimeout(() => navigate('/characters'), 800);
   };
 
-  const handleTalentToggle = (talentId) => {
+  const handleTalentToggle = (habilidadeId) => {
     setFormData((prev) => {
-      const currentTalents = prev.talents || [];
-      const isSelected = currentTalents.some(t => t.id === talentId);
+      const currentHabilidades = prev.habilidades || [];
+      const isSelected = currentHabilidades.some(t => t.id === habilidadeId);
       
-      let newTalents;
+      let newHabilidades;
       if (isSelected) {
-        newTalents = currentTalents.filter(t => t.id !== talentId);
+        newHabilidades = currentHabilidades.filter(t => t.id !== habilidadeId);
       } else {
-        const talent = getTalentsForClass(prev.characterClass).find(t => t.id === talentId);
-        if (talent) {
-          newTalents = [...currentTalents, { id: talentId, name: talent.name }];
+        const habilidade = getHabilidadesForClass(prev.characterClass).find(t => t.id === habilidadeId);
+        if (habilidade) {
+          newHabilidades = [...currentHabilidades, { id: habilidadeId, name: habilidade.name }];
         } else {
           return prev;
         }
       }
       
-      return { ...prev, talents: newTalents };
+      return { ...prev, habilidades: newHabilidades };
     });
   };
 
@@ -449,7 +449,7 @@ function CharacterCreate({ mode = 'create' }) {
       level: clampLevelValue(formData.level),
       attributes: { ...formData.attributes },
       skills: [...(formData.skills || [])],
-      talents: [...(formData.talents || [])],
+      habilidades: [...(formData.habilidades || [])],
       experience: Number(formData.experience || 0),
     };
 
@@ -772,28 +772,28 @@ function CharacterCreate({ mode = 'create' }) {
           )}
 
           {/* Talentos */}
-          {selectedClassDefinition && getTalentsForClass(selectedClassDefinition.id).length > 0 && (
+          {selectedClassDefinition && getHabilidadesForClass(selectedClassDefinition.id).length > 0 && (
             <section className="form-section">
               <label className="form-label">Poderes de Classe</label>
               <div className="talents-section">
                 <div className="talents-list">
-                  {getTalentsForClass(selectedClassDefinition.id).map(talent => {
-                    const isSelected = (formData.talents || []).some(t => t.id === talent.id);
+                  {getHabilidadesForClass(selectedClassDefinition.id).map(habilidade => {
+                    const isSelected = (formData.habilidades || []).some(h => h.id === habilidade.id);
                     return (
                       <button
-                        key={talent.id}
+                        key={habilidade.id}
                         type="button"
                         className={`talent-item ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleTalentToggle(talent.id)}
-                        title={talent.description}
+                        onClick={() => handleTalentToggle(habilidade.id)}
+                        title={habilidade.description}
                       >
                         <div className="talent-header">
-                          <span className="talent-name">{talent.name}</span>
-                          {talent.prerequisites.length > 0 && (
-                            <span className="talent-prereq">Pré: {talent.prerequisites.join(', ')}</span>
+                          <span className="talent-name">{habilidade.name}</span>
+                          {habilidade.prerequisites.length > 0 && (
+                            <span className="talent-prereq">Pré: {habilidade.prerequisites.join(', ')}</span>
                           )}
                         </div>
-                        <div className="talent-desc">{talent.description}</div>
+                        <div className="talent-desc">{habilidade.description}</div>
                       </button>
                     );
                   })}

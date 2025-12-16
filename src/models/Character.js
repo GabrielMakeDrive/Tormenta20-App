@@ -11,7 +11,7 @@
  * Os valores de atributos são tipicamente entre -5 e +5, sendo 0 o padrão.
  */
 import { v4 as uuidv4 } from 'uuid';
-import {RACES, CLASSES, SKILLS, TALENTS} from './T20Data.js';
+import {RACES, CLASSES, SKILLS, HABILIDADES} from './T20Data.js';
 export * from './T20Data.js';
 
 const DEFAULT_ATTRIBUTE_SCORE = 0;
@@ -239,7 +239,7 @@ export class Character {
     this.defense = safeNumber(data.defense, 10);
     this.movement = safePositiveNumber(data.movement, 9);
     this.skills = normalizeStringArray(data.skills);
-    this.talents = cloneArray(data.talents);
+    this.habilidades = cloneArray(data.habilidades);
     this.inventory = cloneArray(data.inventory);
     this.money = safePositiveNumber(data.money, 0);
     this.notes = typeof data.notes === 'string' ? data.notes : '';
@@ -270,7 +270,7 @@ export class Character {
       defense: this.defense,
       movement: this.movement,
       skills: [...this.skills],
-      talents: [...this.talents],
+      habilidades: [...this.habilidades],
       inventory: [...this.inventory],
       money: this.money,
       notes: this.notes,
@@ -354,11 +354,11 @@ export const getCharacterLevelFromXp = (experience) => {
 /**
  * Helpers para Talentos
  */
-export const getTalentsForClass = (classId) => {
-  return TALENTS[classId] || [];
+export const getHabilidadesForClass = (classId) => {
+  return HABILIDADES[classId] || [];
 };
 
-export const getTalentById = (classId, talentId) => {
-  const classTalents = getTalentsForClass(classId);
-  return classTalents.find(t => t.id === talentId) || null;
+export const getHabilidadeById = (classId, habilidadeId) => {
+  const classHabilidades = getHabilidadesForClass(classId);
+  return classHabilidades.find(t => t.id === habilidadeId) || null;
 };

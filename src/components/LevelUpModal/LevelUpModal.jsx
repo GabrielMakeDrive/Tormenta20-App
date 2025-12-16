@@ -18,7 +18,6 @@ function LevelUpModal({ isOpen, onClose, character }) {
   const newMaxMp = calculateMaxMp(character);
   const hpIncrease = newMaxHp - oldMaxHp;
   const mpIncrease = newMaxMp - oldMaxMp;
-console.log('LevelUpModal hpIncrease:', hpIncrease, 'mpIncrease:', mpIncrease);
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="">
       <div className="level-up-modal">
