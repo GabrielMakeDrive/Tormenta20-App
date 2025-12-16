@@ -59,11 +59,16 @@ export const HABILIDADES = {
 ### Objeto Habilidade
 - `id`: Identificador único da habilidade (string, snake_case).
 - `name`: Nome de exibição (string).
-- `type`: Tipo da habilidade. `'feature'` (padrão da classe) ou `'power'` (poder selecionável).
-- `level`: (Opcional) Nível em que a habilidade é adquirida (para features) ou nível mínimo (para powers, embora redundante com prerequisites, pode ser usado para ordenação).
-- `tags`: (Opcional) Array de strings para categorizar poderes (ex: 'armadilha').
+- `type`: Tipo da habilidade. Pode ser `'feature'` (habilidade automática/padrão) **ou** outro tipo específico (ex.: `'power'`, `'terrain'`, `'style'`, etc.).
+  - **`feature`**: habilidade automática concedida quando aplicável (definida por `level`) — **não consome escolha**.
+  - **outros tipos** (ex.: `'power'`, `'terrain'`): tipos **selecionáveis**; ao subir de nível, a interface apresenta **um passo por cada `type` elegível**. Por padrão apenas o `power` oferece **1 escolha**; outros tipos começam com **0 escolhas** e recebem escolhas **adicionais** somente quando houver features com `grantsSelection` para aquele `type` cujo `level` seja menor ou igual ao nível atual do personagem.
+  - **Exceção**: tipos que não são `feature` podem ter escolhas adicionais quando houver features (com `grantsSelection`) cujo `grantsSelection` é igual ao `type` e cujo `level` seja menor ou igual ao nível atual do personagem. Cada feature assim encontrada adiciona +1 escolha para aquele `type`.
+- `level`: (Opcional) Nível em que a habilidade é adquirida (para features) ou nível mínimo (para habilidades selecionáveis; pode ser usado para ordenação).
+- `tags`: (Opcional) Array de strings para categorização e pré-requisitos.
 - `description`: Descrição detalhada da regra (string).
 - `prerequisites`: Array de objetos definindo os requisitos.
+- `grantsSelection`: (Opcional) Se presente em uma `feature`, indica que esta habilidade concede uma escolha adicional de habilidades do `type` especificado (ex: 'terrain').
+
 
 ### Estrutura de Pré-requisitos
 Os pré-requisitos são objetos com a seguinte estrutura:
@@ -92,8 +97,8 @@ character.habilidades = [
 
 ### 2. Seleção (CharacterCreate)
 - Durante a criação/edição de personagem, o usuário pode selecionar habilidades disponíveis para sua classe.
-- A interface filtra e exibe apenas habilidades do tipo `power` para seleção.
-- A interface exibe os pré-requisitos formatados (ex: "Des 2", "5º nível").
+- A interface filtra e exibe apenas habilidades selecionáveis (types diferentes de `feature`) para seleção, apresentando **um passo por cada `type`** elegível (o jogador escolhe **um** item por type). 
+- A interface exibe os pré-requisitos formatados (ex: "Des 2", "5º nível") e desabilita opções quando os pré-requisitos não são atendidos.
 - Validações de pré-requisitos ainda não são automáticas (apenas informativas).
 
 ## Helpers Disponíveis (Character.js)
