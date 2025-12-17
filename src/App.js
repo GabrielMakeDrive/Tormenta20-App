@@ -8,7 +8,9 @@ import {
   CharacterDetail, 
   DiceRoller, 
   Inventory, 
-  Settings 
+  Settings,
+  MestreView,
+  JogadorView
 } from './pages';
 import { ensurePersistentStorage } from './services';
 import './styles/global.css';
@@ -246,6 +248,8 @@ function App() {
           <Route path="/characters/:id/inventory" element={<Inventory />} />
           <Route path="/dice" element={<DiceRoller />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/session/host" element={<MestreView />} />
+          <Route path="/session/join" element={<JogadorView />} />
         </Routes>
         {showInstallPrompt && (
           <InstallPrompt
