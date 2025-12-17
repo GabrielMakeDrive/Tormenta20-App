@@ -211,6 +211,102 @@
   padding: 24px;
 }
 
+.xp-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.xp-value {
+  font-weight: 700;
+  color: var(--text-primary);
+}
+
+.xp-modal label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 6px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.xp-input-section {
+  margin: 0;
+}
+
+.xp-input-controls {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.xp-input {
+  flex: 1;
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.xp-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  border: none;
+  background: var(--hover-color);
+  color: var(--text-primary);
+  font-size: 1.2rem;
+}
+
+.xp-quick-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.xp-quick-actions .btn {
+  padding: 8px 10px;
+}
+
+.xp-modal {
+  padding: 8px 0 0 0;
+}
+
+/* XP Bar */
+.xp-bar {
+  margin-top: 8px;
+}
+.xp-bar-track {
+  height: 8px;
+  background: var(--background-color);
+  border-radius: 4px;
+  overflow: hidden;
+  border: 1px solid var(--border-color);
+}
+.xp-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary-light), var(--primary-color));
+  transition: width 0.3s ease;
+}
+.xp-bar-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+}
+.xp-bar-info .xp-left strong {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
 .skills-list {
   display: flex;
   flex-direction: column;
@@ -293,4 +389,63 @@
 
 .quick-actions-bar {
   padding: 16px 0;
+}
+
+/* Habilidades */
+.abilities-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ability-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--surface-color);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+
+.ability-left {
+  flex: 1;
+}
+
+.ability-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.ability-meta {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.ability-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.ability-actions .btn {
+  padding: 6px 10px;
+}
+
+.ability-detail .ability-header {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.ability-tags {
+  font-size: 0.85rem;
+  color: var(--primary-color);
+  font-weight: 600;
+}
+
+.ability-description {
+  color: var(--text-primary);
 }

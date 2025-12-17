@@ -3,11 +3,11 @@
  * consumindo dados persistidos e recalculando valores derivados (atributos,
  * perícias, recursos) em tempo real na UI.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
-import { Header, Button, Toast, MoneyEditor } from '../../components';
+import { Header, Button, Toast, MoneyEditor, Modal, LevelUpModal } from '../../components';
 import { getCharacterById, saveCharacter } from '../../services';
-import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition } from '../../models';
+import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition, getCharacterDisplayXp, getCharacterXpToNextLevel, getCharacterLevelFromXp, getHabilidadeById } from '../../models';
 import './CharacterDetail.css';
 
 const formatAttributeValue = (value = 0) => (value > 0 ? `+${value}` : `${value}`);
@@ -37,12 +37,24 @@ function CharacterDetail() {
   const [character, setCharacter] = useState(null);
   const [activeTab, setActiveTab] = useState('stats');
   const [toast, setToast] = useState(null);
+  const [xpModalOpen, setXpModalOpen] = useState(false);
+  const [levelUpModalOpen, setLevelUpModalOpen] = useState(false);
+  const [abilityModalOpen, setAbilityModalOpen] = useState(false);
+  const [selectedAbility, setSelectedAbility] = useState(null);
+  const [xpAmount, setXpAmount] = useState('0');
+  const xpInputRef = useRef(null);
 
   useEffect(() => {
     if (location.state?.toast) {
       setToast(location.state.toast);
     }
   }, [location.state]);
+
+  useEffect(() => {
+    if (xpModalOpen) {
+      setXpAmount('0');
+    }
+  }, [xpModalOpen]);
 
   useEffect(() => {
     const loaded = getCharacterById(id);
@@ -74,6 +86,92 @@ function CharacterDetail() {
     saveCharacter(updated);
   };
 
+  const handleAddXp = (amount) => {
+    if (!character) return;
+    const parsed = Number(amount);
+    if (!Number.isFinite(parsed) || parsed <= 0) {
+      setToast({ message: 'Informe uma quantidade válida de XP', type: 'error' });
+      return;
+    }
+    const added = Math.max(0, Math.floor(parsed));
+    const currentXp = Number(character.experience || 0);
+    const newXp = Math.max(0, currentXp + added);
+    const newLevel = getCharacterLevelFromXp(newXp);
+    const leveledUp = newLevel > character.level;
+    
+    let updated = { ...character, experience: newXp, level: newLevel };
+
+    if (leveledUp) {
+      const oldMaxHp = calculateMaxHp(character);
+      const oldMaxMp = calculateMaxMp(character);
+      const newMaxHp = calculateMaxHp(updated);
+      const newMaxMp = calculateMaxMp(updated);
+      
+      const hpDiff = newMaxHp - oldMaxHp;
+      const mpDiff = newMaxMp - oldMaxMp;
+
+      if (hpDiff > 0 || mpDiff > 0) {
+        updated = {
+          ...updated,
+          hp: { 
+            ...updated.hp, 
+            current: (updated.hp?.current || 0) + hpDiff,
+            max: newMaxHp
+          },
+          mp: { 
+            ...updated.mp, 
+            current: (updated.mp?.current || 0) + mpDiff,
+            max: newMaxMp
+          }
+        };
+      }
+    }
+
+    setCharacter(updated);
+    saveCharacter(updated);
+    if (leveledUp) {
+      setLevelUpModalOpen(true);
+    }
+    setToast({ message: `Ganhou ${added} XP`, type: 'success' });
+    setXpModalOpen(false);
+  };
+
+  const changeXpInputBy = (delta) => {
+    setXpAmount((prev) => {
+      const current = Number(prev) || 0;
+      let next = Math.floor(current + delta);
+      if (next < 1) next = 1;
+      return String(next);
+    });
+  };
+
+  const addQuickToInput = (value) => {
+    setXpAmount((prev) => {
+      const current = Number(prev) || 0;
+      let next = Math.floor(current + value);
+      if (next < 1) next = 1;
+      return String(next);
+    });
+  };
+
+  const handleSaveAbilities = (abilities) => {
+    if (!character || !abilities || abilities.length === 0) return;
+    
+    const newHabilidades = [...(character.habilidades || [])];
+    abilities.forEach(ability => {
+      if (!newHabilidades.some(h => h.id === ability.id)) {
+        newHabilidades.push({ id: ability.id, name: ability.name });
+      }
+    });
+
+    const updated = {
+      ...character,
+      habilidades: newHabilidades
+    };
+    setCharacter(updated);
+    saveCharacter(updated);
+  };
+
   if (!character) {
     return <div className="page">Carregando...</div>;
   }
@@ -87,9 +185,17 @@ function CharacterDetail() {
   const hpPercentage = maxHp > 0 ? (currentHp / maxHp) * 100 : 0;
   const mpPercentage = maxMp > 0 ? (currentMp / maxMp) * 100 : 0;
 
+  const displayXp = `${getCharacterDisplayXp(character)}${getCharacterXpToNextLevel(character) ? ` / ${getCharacterXpToNextLevel(character)}` : ''}`;
+
+  // XP progress for the level (value and percentage)
+  const currentLevelXp = getCharacterDisplayXp(character);
+  const xpToNext = getCharacterXpToNextLevel(character) || 0;
+  const xpPercentage = xpToNext > 0 ? Math.min(100, Math.round((currentLevelXp / xpToNext) * 100)) : 100;
+
   const tabs = [
-    { id: 'stats', label: 'Status', icon: '📊' },
+    { id: 'stats', label: 'Ações', icon: '📊' },
     { id: 'skills', label: 'Perícias', icon: '🎯' },
+    { id: 'abilities', label: 'Habilidades', icon: '✨' },
     { id: 'inventory', label: 'Inventário', icon: '🎒' },
     { id: 'notes', label: 'Notas', icon: '📝' },
   ];
@@ -113,8 +219,13 @@ function CharacterDetail() {
           <div className="character-meta">
             <h2>{character.name}</h2>
             <p>
-              {raceDefinition?.name || 'Raça'} • {classDefinition?.name || 'Classe'} • Nível {character.level}
+              {raceDefinition?.name || 'Raça'} • {classDefinition?.name || 'Classe'} • Nível {character.level} ({displayXp} XP)
             </p>
+            <div className="xp-bar">
+              <div className="xp-bar-track">
+                <div className="xp-bar-fill" style={{ width: `${xpPercentage}%` }} />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -215,7 +326,12 @@ function CharacterDetail() {
         <div className="tab-content">
           {activeTab === 'stats' && (
             <div className="stats-tab">
-              <p className="tab-info">Use os botões +/- para ajustar PV e PM durante o combate.</p>
+              <div className="xp-row">
+                <div className="xp-value">XP: {displayXp}</div>
+                <div className="xp-actions">
+                  <Button variant="secondary" onClick={() => setXpModalOpen(true)}>XP ➕</Button>
+                </div>
+              </div>
             </div>
           )}
 
@@ -246,6 +362,36 @@ function CharacterDetail() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'abilities' && (
+            <div className="abilities-tab">
+              {character.habilidades && character.habilidades.length > 0 ? (
+                <div className="abilities-list">
+                  {character.habilidades.map((h) => {
+                    const abilityDef = getHabilidadeById(character.characterClass, h.id);
+                    const displayName = h.name || abilityDef?.name || h.id;
+                    return (
+                      <div key={h.id} className="ability-item">
+                        <div className="ability-left">
+                          <div className="ability-name">{displayName}</div>
+                        </div>
+                        <div className="ability-actions">
+                          <Button variant="secondary" size="small" onClick={() => {
+                            setSelectedAbility(abilityDef || h);
+                            setAbilityModalOpen(true);
+                          }}>
+                            Ver
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="tab-info">Nenhuma habilidade adquirida.</p>
+              )}
             </div>
           )}
 
@@ -304,6 +450,71 @@ function CharacterDetail() {
           onClose={() => setToast(null)} 
         />
       )}
+
+      <LevelUpModal
+        isOpen={levelUpModalOpen}
+        onClose={() => setLevelUpModalOpen(false)}
+        character={character}
+        onSaveAbilities={handleSaveAbilities}
+      />
+
+      <Modal isOpen={abilityModalOpen} onClose={() => setAbilityModalOpen(false)} title={selectedAbility?.name || 'Habilidade'}>
+        <div className="ability-detail">
+          <div className="ability-header">
+            <div className="ability-type">{selectedAbility?.type || ''}{selectedAbility?.level ? ` • ${selectedAbility.level}º nível` : ''}</div>
+            {selectedAbility?.tags && <div className="ability-tags">{selectedAbility.tags.join(', ')}</div>}
+          </div>
+          <p className="ability-description">{selectedAbility?.description || 'Sem descrição disponível.'}</p>
+          <div className="modal-actions">
+            <Button variant="secondary" onClick={() => setAbilityModalOpen(false)}>Fechar</Button>
+          </div>
+        </div>
+      </Modal>
+
+      <Modal isOpen={xpModalOpen} onClose={() => setXpModalOpen(false)} title="Adicionar XP">
+        <div className="xp-modal">
+          <section className="form-section xp-input-section">
+            <div className="xp-input-controls">
+              <button
+                type="button"
+                className="xp-btn"
+                onClick={() => changeXpInputBy(-1)}
+                aria-label="Diminuir XP"
+              >
+                −
+              </button>
+              <input
+                id="xp-amount"
+                type="number"
+                min="1"
+                className="form-input xp-input"
+                value={xpAmount}
+                onChange={(e) => setXpAmount(e.target.value)}
+                ref={xpInputRef}
+                aria-label="Quantidade de XP"
+              />
+              <button
+                type="button"
+                className="xp-btn"
+                onClick={() => changeXpInputBy(1)}
+                aria-label="Aumentar XP"
+              >
+                +
+              </button>
+            </div>
+            <div className="xp-quick-actions">
+              <Button variant="secondary" size="small" onClick={() => addQuickToInput(1)} aria-label="Adicionar 1 XP">+1</Button>
+              <Button variant="secondary" size="small" onClick={() => addQuickToInput(10)} aria-label="Adicionar 10 XP">+10</Button>
+              <Button variant="secondary" size="small" onClick={() => addQuickToInput(100)} aria-label="Adicionar 100 XP">+100</Button>
+              <Button variant="secondary" size="small" onClick={() => addQuickToInput(1000)} aria-label="Adicionar 1000 XP">+1000</Button>
+            </div>
+          </section>
+          <div className="modal-actions">
+            <Button variant="secondary" onClick={() => setXpModalOpen(false)}>Cancelar</Button>
+            <Button variant="primary" onClick={() => handleAddXp(xpAmount)}>Adicionar</Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }

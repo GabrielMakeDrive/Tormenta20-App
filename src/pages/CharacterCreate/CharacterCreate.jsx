@@ -11,9 +11,11 @@ import {
   RACES, 
   CLASSES, 
   SKILLS,
-  getTalentsForClass,
+  getHabilidadesForClass,
   calculateMaxHp,
   calculateMaxMp,
+  getCharacterLevelFromXp,
+  getMinimumXpForLevel,
 } from '../../models';
 import { saveCharacter, getCharacterById, deleteCharacter } from '../../services';
 import './CharacterCreate.css';
@@ -46,6 +48,30 @@ const INITIAL_ATTRIBUTES = Object.keys(ATTRIBUTE_LABELS).reduce((acc, key) => {
 }, {});
 
 const formatAttributeValue = (value = 0) => (value > 0 ? `+${value}` : `${value}`);
+
+const formatPrerequisites = (prerequisites = []) => {
+  if (!Array.isArray(prerequisites)) return '';
+  
+  return prerequisites.map(req => {
+    if (typeof req === 'string') return req;
+    
+    switch (req.type) {
+      case 'attribute':
+        const attrLabel = ATTRIBUTE_LABELS[req.key] || req.key;
+        return `${attrLabel.substring(0, 3)} ${req.value}`;
+      case 'skill':
+        return `Treinado em ${req.value.charAt(0).toUpperCase() + req.value.slice(1)}`;
+      case 'level':
+        return `${req.value}º nível`;
+      case 'Poder':
+        return `Poder ${req.value}`;
+      case 'tag':
+        return `Poder de ${req.value}`;
+      default:
+        return req.label || '';
+    }
+  }).join(', ');
+};
 
 const getRaceAttributeBonus = (race, attrKey) => {
   if (!race) {
@@ -87,6 +113,31 @@ const clampLevelValue = (value) => {
   return Math.max(1, Math.min(20, Math.trunc(numeric)));
 };
 
+/**
+ * Ajusta o XP para ficar consistente com o nível informado.
+ * - Se o XP atual corresponder a nível maior que `level`, retorna o XP mínimo daquele `level`.
+ * - Se o XP atual for menor que o XP mínimo do `level`, retorna o XP mínimo do `level`.
+ * - Caso contrário, retorna o XP recebido.
+ */
+const ensureExperienceMatchesLevel = (level, experience) => {
+  const currentXp = Number(experience || 0);
+  const lvl = clampLevelValue(level);
+  const minXp = getMinimumXpForLevel(lvl);
+  const xpLevel = getCharacterLevelFromXp(currentXp);
+
+  // Caso o XP corresponda a um nível superior, forçamos para o mínimo do nível desejado
+  if (xpLevel > lvl) {
+    return minXp;
+  }
+
+  // Caso o XP seja menor que o mínimo do nível selecionado, elevamos ao mínimo
+  if (currentXp < minXp) {
+    return minXp;
+  }
+
+  return currentXp;
+};
+
 const getMandatorySkills = (characterClass) => {
   if (!characterClass?.skillTraining?.mandatory) {
     return [];
@@ -114,7 +165,8 @@ const createInitialFormData = () => ({
   level: 1,
   attributes: { ...INITIAL_ATTRIBUTES },
   skills: [],
-  talents: [],
+  habilidades: [],
+  experience: 0,
 });
 
 function CharacterCreate({ mode = 'create' }) {
@@ -203,9 +255,10 @@ function CharacterCreate({ mode = 'create' }) {
       race: existingRaceId,
       characterClass: existingClassId,
       level: clampLevelValue(existing.level || 1),
+      experience: Number(existing.experience || 0),
       attributes: sanitizedAttributes,
       skills: mergedSkills,
-      talents: existing.talents || [],
+      habilidades: existing.habilidades || [],
     });
     setSelectedSkillsByGroup(newSelectedSkillsByGroup);
     setActiveGroupIndex(newActiveGroupIndex);
@@ -241,7 +294,11 @@ function CharacterCreate({ mode = 'create' }) {
       const current = clampLevelValue(prev.level || 1);
       const next = clampLevelValue(current + delta);
       if (next === current) return prev;
-      return { ...prev, level: next };
+      const adjustedXp = ensureExperienceMatchesLevel(next, prev.experience);
+      if (Number(adjustedXp) !== Number(prev.experience || 0)) {
+        setToast({ message: `XP ajustado para ${adjustedXp} (mínimo do nível ${next}).`, type: 'info' });
+      }
+      return { ...prev, level: next, experience: adjustedXp };
     });
   };
 
@@ -266,10 +323,15 @@ function CharacterCreate({ mode = 'create' }) {
     console.log('handleChange', field, value);
     setFormData(prev => {
       if (field === 'level') {
-        return { ...prev, level: clampLevelValue(value) };
+        const newLevel = clampLevelValue(value);
+        const adjustedXp = ensureExperienceMatchesLevel(newLevel, prev.experience);
+        if (Number(adjustedXp) !== Number(prev.experience || 0)) {
+          setToast({ message: `XP ajustado para ${adjustedXp} (mínimo do nível ${newLevel}).`, type: 'info' });
+        }
+        return { ...prev, level: newLevel, experience: adjustedXp };
       }
       if (field === 'characterClass') {
-        // Reset skills and talents when class changes
+        // Reset skills and habilidades when class changes
         setActiveGroupIndex(0);
         setIsSelectingSkills(true);
         setSelectedSkillsByGroup({});
@@ -277,7 +339,7 @@ function CharacterCreate({ mode = 'create' }) {
         const newClassDef = CLASSES.find(c => c.id === value);
         const mandatory = getMandatorySkills(newClassDef);
 
-        return { ...prev, [field]: value, skills: mandatory, talents: [] };
+        return { ...prev, [field]: value, skills: mandatory, habilidades: [] };
       }
       return { ...prev, [field]: value };
     });
@@ -374,24 +436,24 @@ function CharacterCreate({ mode = 'create' }) {
     setTimeout(() => navigate('/characters'), 800);
   };
 
-  const handleTalentToggle = (talentId) => {
+  const handleTalentToggle = (habilidadeId) => {
     setFormData((prev) => {
-      const currentTalents = prev.talents || [];
-      const isSelected = currentTalents.some(t => t.id === talentId);
+      const currentHabilidades = prev.habilidades || [];
+      const isSelected = currentHabilidades.some(t => t.id === habilidadeId);
       
-      let newTalents;
+      let newHabilidades;
       if (isSelected) {
-        newTalents = currentTalents.filter(t => t.id !== talentId);
+        newHabilidades = currentHabilidades.filter(t => t.id !== habilidadeId);
       } else {
-        const talent = getTalentsForClass(prev.characterClass).find(t => t.id === talentId);
-        if (talent) {
-          newTalents = [...currentTalents, { id: talentId, name: talent.name }];
+        const habilidade = getHabilidadesForClass(prev.characterClass).find(t => t.id === habilidadeId);
+        if (habilidade) {
+          newHabilidades = [...currentHabilidades, { id: habilidadeId, name: habilidade.name }];
         } else {
           return prev;
         }
       }
       
-      return { ...prev, talents: newTalents };
+      return { ...prev, habilidades: newHabilidades };
     });
   };
 
@@ -447,8 +509,16 @@ function CharacterCreate({ mode = 'create' }) {
       level: clampLevelValue(formData.level),
       attributes: { ...formData.attributes },
       skills: [...(formData.skills || [])],
-      talents: [...(formData.talents || [])],
+      habilidades: [...(formData.habilidades || [])],
+      experience: Number(formData.experience || 0),
     };
+
+    // Ensure experience does not imply a higher level than selected
+    const correctedExperience = ensureExperienceMatchesLevel(normalizedCharacter.level, normalizedCharacter.experience);
+    if (Number(correctedExperience) !== Number(normalizedCharacter.experience)) {
+      normalizedCharacter.experience = correctedExperience;
+      setToast({ message: `XP ajustado para ${correctedExperience} (mínimo do nível ${normalizedCharacter.level}).`, type: 'info' });
+    }
 
     const fallbackHp = isEditMode ? (originalCharacter?.hp?.max ?? DEFAULT_HP) : DEFAULT_HP;
     const fallbackMp = isEditMode ? (originalCharacter?.mp?.max ?? 0) : 0;
@@ -623,6 +693,20 @@ function CharacterCreate({ mode = 'create' }) {
             </div>
           </section>
 
+          {/* XP */}
+          <section className="form-section">
+            <label className="form-label">XP Inicial</label>
+            <div className="xp-input-controls">
+              <input
+                type="number"
+                className="form-input"
+                min="0"
+                value={formData.experience}
+                onChange={(e) => handleChange('experience', e.target.value)}
+              />
+            </div>
+          </section>
+
           {/* Atributos */}
           <section className="form-section">
             <label className="form-label points-label">
@@ -755,28 +839,30 @@ function CharacterCreate({ mode = 'create' }) {
           )}
 
           {/* Talentos */}
-          {selectedClassDefinition && getTalentsForClass(selectedClassDefinition.id).length > 0 && (
+          {selectedClassDefinition && getHabilidadesForClass(selectedClassDefinition.id).length > 0 && (
             <section className="form-section">
               <label className="form-label">Poderes de Classe</label>
               <div className="talents-section">
                 <div className="talents-list">
-                  {getTalentsForClass(selectedClassDefinition.id).map(talent => {
-                    const isSelected = (formData.talents || []).some(t => t.id === talent.id);
+                  {getHabilidadesForClass(selectedClassDefinition.id)
+                    .filter(h => h.type === 'Poder')
+                    .map(habilidade => {
+                    const isSelected = (formData.habilidades || []).some(h => h.id === habilidade.id);
                     return (
                       <button
-                        key={talent.id}
+                        key={habilidade.id}
                         type="button"
                         className={`talent-item ${isSelected ? 'selected' : ''}`}
-                        onClick={() => handleTalentToggle(talent.id)}
-                        title={talent.description}
+                        onClick={() => handleTalentToggle(habilidade.id)}
+                        title={habilidade.description}
                       >
                         <div className="talent-header">
-                          <span className="talent-name">{talent.name}</span>
-                          {talent.prerequisites.length > 0 && (
-                            <span className="talent-prereq">Pré: {talent.prerequisites.join(', ')}</span>
+                          <span className="talent-name">{habilidade.name}</span>
+                          {habilidade.prerequisites.length > 0 && (
+                            <span className="talent-prereq">Pré: {formatPrerequisites(habilidade.prerequisites)}</span>
                           )}
                         </div>
-                        <div className="talent-desc">{talent.description}</div>
+                        <div className="talent-desc">{habilidade.description}</div>
                       </button>
                     );
                   })}

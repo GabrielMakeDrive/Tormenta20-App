@@ -11,7 +11,7 @@
  * Os valores de atributos são tipicamente entre -5 e +5, sendo 0 o padrão.
  */
 import { v4 as uuidv4 } from 'uuid';
-import {RACES, CLASSES, SKILLS, TALENTS} from './T20Data.js';
+import {RACES, CLASSES, SKILLS, HABILIDADES} from './T20Data.js';
 export * from './T20Data.js';
 
 const DEFAULT_ATTRIBUTE_SCORE = 0;
@@ -239,7 +239,7 @@ export class Character {
     this.defense = safeNumber(data.defense, 10);
     this.movement = safePositiveNumber(data.movement, 9);
     this.skills = normalizeStringArray(data.skills);
-    this.talents = cloneArray(data.talents);
+    this.habilidades = cloneArray(data.habilidades);
     this.inventory = cloneArray(data.inventory);
     this.money = safePositiveNumber(data.money, 0);
     this.notes = typeof data.notes === 'string' ? data.notes : '';
@@ -270,7 +270,7 @@ export class Character {
       defense: this.defense,
       movement: this.movement,
       skills: [...this.skills],
-      talents: [...this.talents],
+      habilidades: [...this.habilidades],
       inventory: [...this.inventory],
       money: this.money,
       notes: this.notes,
@@ -329,13 +329,88 @@ export const getCharacterTotalAttributeValue = (characterLike, attrKey) => {
 };
 
 /**
- * Helpers para Talentos
+ * Obtém o XP restante para o próximo nível (total XP - XP mínimo do nível atual).
  */
-export const getTalentsForClass = (classId) => {
-  return TALENTS[classId] || [];
+export const getCharacterDisplayXp = (characterLike) => {
+  const level = characterLike?.level || 1;
+  const experience = characterLike?.experience || 0;
+  const currentLevelXp = LEVEL_PROGRESSION.find(l => l.level === level)?.experience || 0;
+  const nextLevelXp = LEVEL_PROGRESSION.find(l => l.level === level + 1)?.experience || null;
+  return Math.max(0, experience - currentLevelXp);
 };
 
-export const getTalentById = (classId, talentId) => {
-  const classTalents = getTalentsForClass(classId);
-  return classTalents.find(t => t.id === talentId) || null;
+/**
+ * Obtém o XP necessário entre o nível atual e o próximo nível.
+ */
+export const getCharacterXpToNextLevel = (characterLike) => {
+  const level = characterLike?.level || 1;
+  const currentLevelXp = LEVEL_PROGRESSION.find(l => l.level === level)?.experience || 0;
+  const nextLevelXp = LEVEL_PROGRESSION.find(l => l.level === level + 1)?.experience || null;
+  // Retorna um número (0 no nível máximo) para facilitar cálculos de porcentagem
+  return level === 20 ? 0 : (nextLevelXp - currentLevelXp);
+};
+
+/**
+ * Calcula o nível baseado no XP total.
+ */
+export const getCharacterLevelFromXp = (experience) => {
+  const xp = Math.max(0, experience || 0);
+  for (let i = LEVEL_PROGRESSION.length - 1; i >= 0; i--) {
+    if (xp >= LEVEL_PROGRESSION[i].experience) {
+      return LEVEL_PROGRESSION[i].level;
+    }
+  }
+  return 1;
+};
+
+/**
+ * Retorna o XP mínimo para o nível informado (0 para nível desconhecido)
+ */
+export const getMinimumXpForLevel = (level) => {
+  const lv = safeLevel(level);
+  return LEVEL_PROGRESSION.find(l => l.level === lv)?.experience || 0;
+};
+
+/**
+ * Helpers para Talentos
+ */
+export const getHabilidadesForClass = (classId) => {
+  return HABILIDADES[classId] || [];
+};
+
+export const getHabilidadeById = (classId, habilidadeId) => {
+  const classHabilidades = getHabilidadesForClass(classId);
+  return classHabilidades.find(t => t.id === habilidadeId) || null;
+};
+
+/**
+ * Verifica se o personagem atende aos pré-requisitos de uma habilidade.
+ */
+export const checkPrerequisites = (character, prerequisites = []) => {
+  if (!prerequisites || prerequisites.length === 0) return true;
+  
+  return prerequisites.every(req => {
+    if (typeof req === 'string') return true; // Ignora strings legadas
+    
+    switch (req.type) {
+      case 'attribute':
+        const attrValue = getTotalAttributeValue(character, req.key);
+        return attrValue >= req.value;
+      case 'skill':
+        return character.skills.includes(req.value);
+      case 'level':
+        return character.level >= req.value;
+      case 'Poder':
+        return character.habilidades.some(h => h.id === req.value);
+      case 'tag':
+        // Verifica se possui poderes com a tag específica
+        const ownedPowers = character.habilidades
+          .map(h => getHabilidadeById(character.characterClass, h.id))
+          .filter(Boolean);
+        const count = ownedPowers.filter(p => p.tags && p.tags.includes(req.value)).length;
+        return count >= (req.count || 1);
+      default:
+        return true;
+    }
+  });
 };
