@@ -118,8 +118,11 @@ function App() {
     setShowInstallPrompt(true);
 
     const handleBeforeInstallPrompt = (event) => {
+      // Prevent the default mini-infobar from appearing and keep the event so we can show it later
       event.preventDefault();
+      // Keep the event in state and globals so other parts of the app can trigger it (e.g., Settings)
       setInstallPromptEvent(event);
+      window.tormentaBeforeInstallPrompt = event;
       setShowInstallPrompt(true);
     };
 
@@ -127,14 +130,72 @@ function App() {
       markInstallPromptDismissed();
       setShowInstallPrompt(false);
       setInstallPromptEvent(null);
+      if (window && window.tormentaBeforeInstallPrompt) {
+        window.tormentaBeforeInstallPrompt = null;
+      }
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     window.addEventListener('appinstalled', handleAppInstalled);
 
+    // Expose a small global helper so other screens (like Settings) can trigger the install prompt
+    // Returns true if a prompt was shown, false otherwise
+    // This effect re-runs when `installPromptEvent` changes to keep helper in sync
+    const attachGlobalInstallHelpers = () => {
+      try {
+        window.tormentaPromptInstall = () => {
+          try {
+            const e = installPromptEvent || window.tormentaBeforeInstallPrompt;
+            if (!e) return false;
+            e.prompt();
+            const choiceResult = e.userChoice;
+            if (choiceResult && typeof choiceResult.then === 'function') {
+              choiceResult
+                .then((choice) => {
+                  if (choice?.outcome === 'accepted') {
+                    markInstallPromptDismissed();
+                    setShowInstallPrompt(false);
+                  }
+                })
+                .finally(() => {
+                  setInstallPromptEvent(null);
+                  if (window && window.tormentaBeforeInstallPrompt) {
+                    window.tormentaBeforeInstallPrompt = null;
+                  }
+                });
+            } else {
+              setInstallPromptEvent(null);
+              if (window && window.tormentaBeforeInstallPrompt) {
+                window.tormentaBeforeInstallPrompt = null;
+              }
+            }
+            return true;
+          } catch (err) {
+            console.error('Erro ao exibir prompt de instalação (global):', err);
+            return false;
+          }
+        };
+
+        window.tormentaHasInstallEvent = () => Boolean(installPromptEvent || window.tormentaBeforeInstallPrompt);
+      } catch (err) {
+        // ignore
+      }
+    };
+
+    attachGlobalInstallHelpers();
+
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
       window.removeEventListener('appinstalled', handleAppInstalled);
+      try {
+        if (window) {
+          delete window.tormentaPromptInstall;
+          delete window.tormentaHasInstallEvent;
+          delete window.tormentaBeforeInstallPrompt;
+        }
+      } catch (e) {
+        // ignore
+      }
     };
   }, []);
 

@@ -165,6 +165,37 @@ function Settings() {
             </label>
           </div>
 
+          <div className="setting-action">
+            <div className="setting-info">
+              <span className="setting-label">⬇️ Adicionar como PWA</span>
+              <span className="setting-desc">Instalar o app como Progressive Web App</span>
+            </div>
+            <Button
+              variant="secondary"
+              size="small"
+              onClick={() => {
+                if (typeof window === 'undefined') {
+                  setToast({ message: 'Instalação PWA não disponível', type: 'error' });
+                  return;
+                }
+
+                const hasEvent = typeof window.tormentaHasInstallEvent === 'function' ? window.tormentaHasInstallEvent() : Boolean(window.tormentaBeforeInstallPrompt);
+                if (hasEvent && typeof window.tormentaPromptInstall === 'function') {
+                  const ok = window.tormentaPromptInstall();
+                  if (ok) {
+                    setToast({ message: 'Prompt de instalação exibido', type: 'success' });
+                  } else {
+                    setToast({ message: 'Instalação não disponível no momento', type: 'error' });
+                  }
+                } else {
+                  setToast({ message: 'Instalação não disponível. Abra o menu do navegador e escolha "Adicionar à tela inicial".', type: 'info' });
+                }
+              }}
+            >
+              Adicionar
+            </Button>
+          </div>
+
           <div className="setting-action danger">
             <div className="setting-info">
               <span className="setting-label">🗑️ Limpar Dados</span>
