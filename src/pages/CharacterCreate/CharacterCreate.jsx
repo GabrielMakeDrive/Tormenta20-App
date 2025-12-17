@@ -3,7 +3,7 @@
  * coleta dados básicos, aplica compra de atributos via pontos e persiste ou
  * atualiza o personagem no StorageService antes de abrir os detalhes.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { Header, Button, Toast, Modal } from '../../components';
 import { 
@@ -16,6 +16,7 @@ import {
   calculateMaxMp,
   getCharacterLevelFromXp,
   getMinimumXpForLevel,
+  checkPrerequisites,
 } from '../../models';
 import { saveCharacter, getCharacterById, deleteCharacter } from '../../services';
 import './CharacterCreate.css';
@@ -182,6 +183,7 @@ function CharacterCreate({ mode = 'create' }) {
   const [selectedSkillsByGroup, setSelectedSkillsByGroup] = useState({});
   const [showDeleteModal, setShowDeleteModal] = useState(false);
 
+  // As habilidades base elegíveis são incluídas automaticamente no formulário.
   useEffect(() => {
     if (!isEditMode) {
       setOriginalCharacter(null);
@@ -266,13 +268,69 @@ function CharacterCreate({ mode = 'create' }) {
     setIsLoading(false);
   }, [isEditMode, routeCharacterId, navigate]);
 
+  const selectedRaceDefinition = RACES.find((race) => race.id === formData.race) || null;
+  const selectedClassDefinition = CLASSES.find((cls) => cls.id === formData.characterClass) || null;
+  const classTalents = selectedClassDefinition ? getHabilidadesForClass(selectedClassDefinition.id) : [];
+  const characterPreview = useMemo(() => ({
+    characterClass: formData.characterClass,
+    level: clampLevelValue(formData.level),
+    attributes: formData.attributes,
+    skills: formData.skills,
+    habilidades: formData.habilidades || [],
+    race: formData.race
+  }), [
+    formData.characterClass,
+    formData.level,
+    formData.attributes,
+    formData.skills,
+    formData.habilidades,
+    formData.race
+  ]);
+
+  useEffect(() => {
+    const classId = characterPreview.characterClass;
+    if (!classId) {
+      return;
+    }
+    console.log('Character preview', characterPreview);
+    const availableTalents = getHabilidadesForClass(classId);
+    const autoAbilities = availableTalents
+      .filter((habilidade) => habilidade.type === 'Habilidade base')
+      .filter((habilidade) => checkPrerequisites(characterPreview, habilidade.prerequisites || []));
+
+    setFormData((prev) => {
+      const current = prev.habilidades || [];
+      const manualAbilities = current.filter((entry) => {
+        const definition = availableTalents.find((talent) => talent.id === entry.id);
+        return !definition || definition.type !== 'Habilidade base';
+      });
+      const autoSelections = autoAbilities.map((habilidade) => ({ id: habilidade.id, name: habilidade.name }));
+      const merged = [...autoSelections, ...manualAbilities];
+      const isSame = merged.length === current.length && merged.every((entry, index) => entry?.id === current[index]?.id);
+      if (isSame) {
+        return prev;
+      }
+      return { ...prev, habilidades: merged };
+    });
+  }, [characterPreview]);
+
+  const eligibleTalents = useMemo(() => {
+    if (!selectedClassDefinition) {
+      return [];
+    }
+    return classTalents.filter((habilidade) => {
+      if (habilidade.type !== 'Poder') {
+        return false;
+      }
+      return checkPrerequisites(characterPreview, habilidade.prerequisites || []);
+    });
+  }, [classTalents, characterPreview, selectedClassDefinition]);
+
   const pointsSpent = calculatePointsSpent(formData.attributes);
   const pointsRemaining = ATTRIBUTE_POINTS_TOTAL - pointsSpent;
   const headerTitle = isEditMode ? 'Editar Personagem' : 'Criar Personagem';
   const submitButtonLabel = isEditMode ? '💾 Salvar Alterações' : '✓ Criar Personagem';
   const levelLabel = isEditMode ? 'Nível' : 'Nível Inicial';
-  const selectedRaceDefinition = RACES.find((race) => race.id === formData.race) || null;
-  const selectedClassDefinition = CLASSES.find((cls) => cls.id === formData.characterClass) || null;
 
   const canDecreaseAttribute = (attrKey) => {
     const currentValue = formData.attributes?.[attrKey] ?? 0;
@@ -693,20 +751,6 @@ function CharacterCreate({ mode = 'create' }) {
             </div>
           </section>
 
-          {/* XP */}
-          <section className="form-section">
-            <label className="form-label">XP Inicial</label>
-            <div className="xp-input-controls">
-              <input
-                type="number"
-                className="form-input"
-                min="0"
-                value={formData.experience}
-                onChange={(e) => handleChange('experience', e.target.value)}
-              />
-            </div>
-          </section>
-
           {/* Atributos */}
           <section className="form-section">
             <label className="form-label points-label">
@@ -838,15 +882,13 @@ function CharacterCreate({ mode = 'create' }) {
             </section>
           )}
 
-          {/* Talentos */}
-          {selectedClassDefinition && getHabilidadesForClass(selectedClassDefinition.id).length > 0 && (
+          {/* Habilidades */}
+          {selectedClassDefinition && classTalents.length > 0 && (
             <section className="form-section">
               <label className="form-label">Poderes de Classe</label>
               <div className="talents-section">
                 <div className="talents-list">
-                  {getHabilidadesForClass(selectedClassDefinition.id)
-                    .filter(h => h.type === 'Poder')
-                    .map(habilidade => {
+                  {eligibleTalents.map(habilidade => {
                     const isSelected = (formData.habilidades || []).some(h => h.id === habilidade.id);
                     return (
                       <button
