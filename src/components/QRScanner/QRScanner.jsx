@@ -17,43 +17,87 @@ import './QRScanner.css';
 
 function QRScanner({ onScan, onError, onClose }) {
   const [isStarting, setIsStarting] = useState(true);
-  const [hasPermission, setHasPermission] = useState(null);
   const [errorMsg, setErrorMsg] = useState(null);
   const [showManualInput, setShowManualInput] = useState(false);
   const [manualValue, setManualValue] = useState('');
   
   const scannerRef = useRef(null);
   const containerRef = useRef(null);
-  const scannerIdRef = useRef(`qr-scanner-${Date.now()}`);
+  const scannerIdRef = useRef('qr-scanner-main');
+  const isScanningRef = useRef(false);
+  const mountedRef = useRef(true);
+  const scannerStartedRef = useRef(false);
+
+  useEffect(() => {
+    console.log('[QRScanner] Componente montado, container ID:', scannerIdRef.current);
+    console.log('[QRScanner] Container element:', document.getElementById(scannerIdRef.current));
+  }, []);
 
   useEffect(() => {
     let html5QrCode = null;
     let mounted = true;
+    mountedRef.current = true;
 
     const startScanner = async () => {
+      // Evita iniciar o scanner múltiplas vezes (problema com StrictMode)
+      if (scannerStartedRef.current) {
+        console.log('[QRScanner] Scanner já iniciado, pulando...');
+        return;
+      }
+
+      console.log('Starting QR Scanner...');
+      
+      // Pequeno delay para garantir que o DOM esteja pronto
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      if (!mounted || !mountedRef.current) {
+        console.log('[QRScanner] Componente desmontado antes de iniciar scanner');
+        return;
+      }
+      
       try {
         // Verifica suporte básico da API de mídia
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
           const err = new Error('API de câmera indisponível neste dispositivo/navegador');
-          setHasPermission(false);
-          setErrorMsg('Câmera indisponível. Certifique-se de estar em HTTPS ou use a entrada manual.');
-          setIsStarting(false);
+          console.error('[QRScanner] API de mídia não suportada');
+          if (mounted && mountedRef.current) {
+            setErrorMsg('Câmera indisponível. Certifique-se de estar em HTTPS ou use a entrada manual.');
+            setIsStarting(false);
+          }
           if (onError) {
             onError(err);
           }
           return;
         }
 
+        console.log('[QRScanner] Verificando permissões da câmera...');
         // Verifica permissão de câmera
         const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
         stream.getTracks().forEach(track => track.stop());
         
-        if (!mounted) return;
-        setHasPermission(true);
+        if (!mounted || !mountedRef.current) {
+          console.log('[QRScanner] Componente desmontado durante verificação de permissões');
+          return;
+        }
 
+        console.log('[QRScanner] Criando instância do scanner...');
         // Cria instância do scanner
         html5QrCode = new Html5Qrcode(scannerIdRef.current);
         scannerRef.current = html5QrCode;
+
+        console.log('[QRScanner] ID do container:', scannerIdRef.current);
+        console.log('[QRScanner] Elemento DOM existe:', document.getElementById(scannerIdRef.current));
+
+        // Verifica se o container ainda existe
+        const containerElement = document.getElementById(scannerIdRef.current);
+        if (!containerElement) {
+          console.error('[QRScanner] Container element não encontrado');
+          if (mounted && mountedRef.current) {
+            setErrorMsg('Erro interno: container não encontrado');
+            setIsStarting(false);
+          }
+          return;
+        }
 
         // Configuração do scanner
         const config = {
@@ -62,13 +106,15 @@ function QRScanner({ onScan, onError, onClose }) {
           aspectRatio: 1.0,
         };
 
+        console.log('[QRScanner] Iniciando scanner...');
         // Inicia scanner com câmera traseira
         await html5QrCode.start(
           { facingMode: 'environment' },
           config,
           (decodedText) => {
+            console.log('[QRScanner] QR Code detectado:', decodedText);
             // QR lido com sucesso
-            if (mounted && onScan) {
+            if (mounted && mountedRef.current && onScan) {
               // Vibra para feedback
               if (navigator.vibrate) {
                 navigator.vibrate(100);
@@ -78,24 +124,63 @@ function QRScanner({ onScan, onError, onClose }) {
           },
           (errorMessage) => {
             // Ignora erros de leitura contínua (normal quando não há QR na tela)
+            console.debug('[QRScanner] Erro de leitura (normal):', errorMessage);
           }
         );
 
-        if (mounted) {
+        console.log('[QRScanner] Scanner start() completado, verificando estado...');
+        console.log('[QRScanner] Estado do scanner:', html5QrCode.getState());
+
+        // Aguardar o vídeo ser criado e aplicar estilos
+        const waitForVideo = () => {
+          const videoElement = document.querySelector(`#${scannerIdRef.current} video`);
+          if (videoElement) {
+            console.log('[QRScanner] Vídeo encontrado imediatamente após start');
+            videoElement.style.width = '100%';
+            videoElement.style.height = 'auto';
+            videoElement.style.display = 'block';
+            videoElement.style.minHeight = '200px';
+            return;
+          }
+          
+          // Se não encontrou imediatamente, tentar novamente
+          setTimeout(() => {
+            const videoElement = document.querySelector(`#${scannerIdRef.current} video`);
+            if (videoElement) {
+              console.log('[QRScanner] Vídeo encontrado após delay');
+              videoElement.style.width = '100%';
+              videoElement.style.height = 'auto';
+              videoElement.style.display = 'block';
+              videoElement.style.minHeight = '200px';
+            } else {
+              console.log('[QRScanner] Vídeo ainda não encontrado');
+            }
+          }, 100);
+        };
+        
+        waitForVideo();
+
+        if (mounted && mountedRef.current) {
+          console.log('[QRScanner] Scanner iniciado com sucesso - chamando setIsStarting(false)');
+          scannerStartedRef.current = true;
+          isScanningRef.current = true;
           setIsStarting(false);
         }
       } catch (err) {
         console.error('[QRScanner] Erro ao iniciar:', err);
-        if (!mounted) return;
+        if (!mounted || !mountedRef.current) return;
 
         setIsStarting(false);
+        isScanningRef.current = false;
         
         if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-          setHasPermission(false);
+          console.error('[QRScanner] Permissão negada');
           setErrorMsg('Permissão de câmera negada. Use a entrada manual.');
         } else if (err.name === 'NotFoundError') {
+          console.error('[QRScanner] Nenhuma câmera encontrada');
           setErrorMsg('Nenhuma câmera encontrada. Use a entrada manual.');
         } else {
+          console.error('[QRScanner] Erro desconhecido:', err.message);
           setErrorMsg(`Erro ao acessar câmera. Use a entrada manual. ${err.message}`);
         }
         
@@ -110,10 +195,22 @@ function QRScanner({ onScan, onError, onClose }) {
     // Cleanup
     return () => {
       mounted = false;
+      mountedRef.current = false;
+      scannerStartedRef.current = false;
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current = null;
+        try {
+          const state = scannerRef.current.getState();
+          if (state === 'SCANNING' || state === 'PAUSED') {
+            scannerRef.current.stop().catch((err) => {
+              console.warn('[QRScanner] Erro ao parar scanner no cleanup:', err);
+            });
+          }
+        } catch (err) {
+          console.warn('[QRScanner] Erro ao parar scanner no cleanup:', err);
+        }
+        isScanningRef.current = false;
       }
+      scannerRef.current = null;
     };
   }, [onScan, onError]);
 
@@ -127,8 +224,19 @@ function QRScanner({ onScan, onError, onClose }) {
 
   // Fecha scanner
   const handleClose = () => {
+    console.log('handleClose called');
     if (scannerRef.current) {
-      scannerRef.current.stop().catch(() => {});
+      try {
+        const state = scannerRef.current.getState();
+        if (state === 'SCANNING' || state === 'PAUSED') {
+          scannerRef.current.stop().catch((err) => {
+            console.warn('[QRScanner] Erro ao parar scanner:', err);
+          });
+        }
+      } catch (err) {
+        console.warn('[QRScanner] Erro ao verificar estado do scanner:', err);
+      }
+      isScanningRef.current = false;
     }
     if (onClose) {
       onClose();
@@ -158,7 +266,15 @@ function QRScanner({ onScan, onError, onClose }) {
             id={scannerIdRef.current} 
             ref={containerRef}
             className={`scanner-video ${isStarting || errorMsg ? 'hidden' : ''}`}
-          />
+            style={{ minHeight: '200px' }}
+          >
+            {/* Debug info */}
+            {process.env.NODE_ENV === 'development' && (
+              <div style={{ position: 'absolute', top: 0, left: 0, background: 'red', color: 'white', padding: '2px 4px', fontSize: '10px', zIndex: 1000 }}>
+                isStarting: {isStarting ? 'true' : 'false'}, errorMsg: {errorMsg ? 'true' : 'false'}
+              </div>
+            )}
+          </div>
 
           {/* Mensagem de erro */}
           {errorMsg && !showManualInput && (
