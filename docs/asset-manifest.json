@@ -1,18 +1,18 @@
 {
   "files": {
-    "main.css": "/Tormenta20-App/static/css/main.4ab1200f.css",
-    "main.js": "/Tormenta20-App/static/js/main.3a6583ea.js",
+    "main.css": "/Tormenta20-App/static/css/main.43af1b07.css",
+    "main.js": "/Tormenta20-App/static/js/main.42ddb741.js",
     "static/js/453.98c06f4e.chunk.js": "/Tormenta20-App/static/js/453.98c06f4e.chunk.js",
     "static/media/d20.png": "/Tormenta20-App/static/media/d20.e4936bb12d7485172256.png",
     "static/media/bootstrap-icons.woff?": "/Tormenta20-App/static/media/bootstrap-icons.1295669cd4e305c97f2c.woff",
     "static/media/bootstrap-icons.woff2?": "/Tormenta20-App/static/media/bootstrap-icons.92ea18a81d737146ff04.woff2",
     "index.html": "/Tormenta20-App/index.html",
-    "main.4ab1200f.css.map": "/Tormenta20-App/static/css/main.4ab1200f.css.map",
-    "main.3a6583ea.js.map": "/Tormenta20-App/static/js/main.3a6583ea.js.map",
+    "main.43af1b07.css.map": "/Tormenta20-App/static/css/main.43af1b07.css.map",
+    "main.42ddb741.js.map": "/Tormenta20-App/static/js/main.42ddb741.js.map",
     "453.98c06f4e.chunk.js.map": "/Tormenta20-App/static/js/453.98c06f4e.chunk.js.map"
   },
   "entrypoints": [
-    "static/css/main.4ab1200f.css",
-    "static/js/main.3a6583ea.js"
+    "static/css/main.43af1b07.css",
+    "static/js/main.42ddb741.js"
   ]
 }

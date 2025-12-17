@@ -28,6 +28,8 @@ function Home() {
     { icon: '📋', label: 'Criar Ficha', path: '/characters/new' },
     { icon: '🎲', label: 'Rolar Dados', path: '/dice' },
     { icon: '📚', label: 'Minhas Fichas', path: '/characters' },
+    { icon: '🏰', label: 'Sessão Mestre', path: '/session/host' },
+    { icon: '🎮', label: 'Entrar Sessão', path: '/session/join' },
   ];
 
   useEffect(() => {
