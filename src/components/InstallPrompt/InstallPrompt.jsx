@@ -7,7 +7,7 @@ function InstallPrompt({ installAvailable, onInstall, onDismiss }) {
     <div className="install-prompt" role="status" aria-live="polite">
       <div className="install-prompt__icon" aria-hidden="true">⬇️</div>
       <div className="install-prompt__text">
-        <strong>Instale o Tormenta 20 App</strong>
+        <strong>Instale o App Tormenta 20</strong>
         <p>Tenha acesso offline, inicialização mais rápida e evite fechar acidentalmente o navegador.</p>
         {!installAvailable && (
           <span className="install-prompt__hint">

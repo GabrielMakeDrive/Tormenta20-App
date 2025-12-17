@@ -47,7 +47,7 @@ function Home() {
 
   return (
     <div className="page home-page">
-      <Header title="Tormenta 20" />
+      <Header title="O Véu Rubro" />
       
       <main className="page-content">
         <section className="hero-section">

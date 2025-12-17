@@ -180,7 +180,7 @@ function Settings() {
         <section className="settings-section">
           <h3>Sobre</h3>
           <div className="about-info">
-            <p><strong>Tormenta 20 App</strong></p>
+            <p><strong>O Véu Rubro</strong></p>
             <p>Versão {process.env.REACT_APP_VERSION}</p>
             <p className="disclaimer">
               Este aplicativo é um projeto de fã e não possui afiliação oficial com a Jambô Editora ou os criadores de Tormenta 20.
