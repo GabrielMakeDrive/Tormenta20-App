@@ -24,7 +24,7 @@ export const HABILIDADES = {
     {
       id: 'marca_presa',
       name: 'Marca da Presa',
-      type: 'feature', // 'feature' = habilidade automática/padrão
+      type: 'Habilidade base', // 'Habilidade base' = habilidade automática/padrão
       level: 1,
       description: 'Descrição...',
       prerequisites: []
@@ -33,7 +33,7 @@ export const HABILIDADES = {
     {
       id: 'ambidestria',
       name: 'Ambidestria',
-      type: 'power', // 'power' = poder selecionável
+      type: 'Poder', // 'Poder' = poder selecionável
       description: 'Descrição...',
       prerequisites: [
         { type: 'attribute', key: 'destreza', value: 2 }
@@ -42,7 +42,7 @@ export const HABILIDADES = {
     {
       id: 'armadilheiro',
       name: 'Armadilheiro',
-      type: 'power',
+      type: 'Poder',
       tags: ['armadilha'], // Tags para categorização e pré-requisitos
       description: '...',
       prerequisites: [
@@ -59,15 +59,15 @@ export const HABILIDADES = {
 ### Objeto Habilidade
 - `id`: Identificador único da habilidade (string, snake_case).
 - `name`: Nome de exibição (string).
-- `type`: Tipo da habilidade. Pode ser `'feature'` (habilidade automática/padrão) **ou** outro tipo específico (ex.: `'power'`, `'terrain'`, `'style'`, etc.).
-  - **`feature`**: habilidade automática concedida quando aplicável (definida por `level`) — **não consome escolha**.
-  - **outros tipos** (ex.: `'power'`, `'terrain'`): tipos **selecionáveis**; ao subir de nível, a interface apresenta **um passo por cada `type` elegível**. Por padrão apenas o `power` oferece **1 escolha**; outros tipos começam com **0 escolhas** e recebem escolhas **adicionais** somente quando houver features com `grantsSelection` para aquele `type` cujo `level` seja menor ou igual ao nível atual do personagem.
-  - **Exceção**: tipos que não são `feature` podem ter escolhas adicionais quando houver features (com `grantsSelection`) cujo `grantsSelection` é igual ao `type` e cujo `level` seja menor ou igual ao nível atual do personagem. Cada feature assim encontrada adiciona +1 escolha para aquele `type`.
-- `level`: (Opcional) Nível em que a habilidade é adquirida (para features) ou nível mínimo (para habilidades selecionáveis; pode ser usado para ordenação).
+- `type`: Tipo da habilidade. Pode ser `'Habilidade base'` (habilidade automática/padrão) **ou** outro tipo específico (ex.: `'Poder'`, `'Terreno'`, `'Estilo'`, etc.).
+  - **`Habilidade base`**: habilidade automática concedida quando aplicável (definida por `level`) — **não consome escolha**.
+  - **outros tipos** (ex.: `'Poder'`, `'Terreno'`): tipos **selecionáveis**; ao subir de nível, a interface apresenta **um passo por cada `type` elegível**. Por padrão apenas o `Poder` oferece **1 escolha**; outros tipos começam com **0 escolhas** e recebem escolhas **adicionais** somente quando houver Habilidades base com `grantsSelection` para aquele `type` cujo `level` seja menor ou igual ao nível atual do personagem.
+  - **Exceção**: tipos que não são `Habilidade base` podem ter escolhas adicionais quando houver Habilidades base (com `grantsSelection`) cujo `grantsSelection` é igual ao `type` e cujo `level` seja menor ou igual ao nível atual do personagem. Cada Habilidade base assim encontrada adiciona +1 escolha para aquele `type`.
+- `level`: (Opcional) Nível em que a habilidade é adquirida (para Habilidades base) ou nível mínimo (para habilidades selecionáveis; pode ser usado para ordenação).
 - `tags`: (Opcional) Array de strings para categorização e pré-requisitos.
 - `description`: Descrição detalhada da regra (string).
 - `prerequisites`: Array de objetos definindo os requisitos.
-- `grantsSelection`: (Opcional) Se presente em uma `feature`, indica que esta habilidade concede uma escolha adicional de habilidades do `type` especificado (ex: 'terrain').
+- `grantsSelection`: (Opcional) Se presente em uma `Habilidade base`, indica que esta habilidade concede uma escolha adicional de habilidades do `type` especificado (ex: 'Terreno').
 
 
 ### Estrutura de Pré-requisitos
@@ -75,7 +75,7 @@ Os pré-requisitos são objetos com a seguinte estrutura:
 - `{ type: 'attribute', key: 'atributo', value: valor }`: Requer valor mínimo no atributo.
 - `{ type: 'skill', value: 'pericia' }`: Requer treinamento na perícia.
 - `{ type: 'level', value: nivel }`: Requer nível mínimo na classe.
-- `{ type: 'power', value: 'id_poder' }`: Requer um poder específico.
+- `{ type: 'Poder', value: 'id_poder' }`: Requer um poder específico.
 - `{ type: 'tag', value: 'tag_nome', count: 1 }`: Requer um (ou mais) poderes com a tag especificada.
 
 ### No Modelo de Personagem (Character.js)
@@ -110,3 +110,4 @@ character.habilidades = [
 - Atualmente, apenas a classe **Caçador** possui habilidades cadastradas.
 - As demais classes devem seguir o novo padrão de estrutura (type, prerequisites como objetos).
 - O sistema de pré-requisitos suporta validação lógica futura baseada nos tipos definidos.
+- Todas as classes possuem uma habilidade “Poder” (Poder de Arcanista, Poder de Bárbaro, Poder de Bardo...) que permite que você escolha um poder de uma lista. Alguns poderes têm pré-requisitos. Para escolhê-los e usá-los, você deve possuir todos os requerimentos mencionados. Você pode escolher um poder no nível em que atinge seus pré-requisitos. A menos que especificado o contrário, você não pode escolher um mesmo poder mais de uma vez.

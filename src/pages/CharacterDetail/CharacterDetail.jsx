@@ -7,7 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Header, Button, Toast, MoneyEditor, Modal, LevelUpModal } from '../../components';
 import { getCharacterById, saveCharacter } from '../../services';
-import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition, getCharacterDisplayXp, getCharacterLevelFromXp } from '../../models';
+import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition, getCharacterDisplayXp, getCharacterXpToNextLevel, getCharacterLevelFromXp, getHabilidadeById } from '../../models';
 import './CharacterDetail.css';
 
 const formatAttributeValue = (value = 0) => (value > 0 ? `+${value}` : `${value}`);
@@ -39,6 +39,8 @@ function CharacterDetail() {
   const [toast, setToast] = useState(null);
   const [xpModalOpen, setXpModalOpen] = useState(false);
   const [levelUpModalOpen, setLevelUpModalOpen] = useState(false);
+  const [abilityModalOpen, setAbilityModalOpen] = useState(false);
+  const [selectedAbility, setSelectedAbility] = useState(null);
   const [xpAmount, setXpAmount] = useState('0');
   const xpInputRef = useRef(null);
 
@@ -183,11 +185,17 @@ function CharacterDetail() {
   const hpPercentage = maxHp > 0 ? (currentHp / maxHp) * 100 : 0;
   const mpPercentage = maxMp > 0 ? (currentMp / maxMp) * 100 : 0;
 
-  const displayXp = getCharacterDisplayXp(character);
+  const displayXp = `${getCharacterDisplayXp(character)}${getCharacterXpToNextLevel(character) ? ` / ${getCharacterXpToNextLevel(character)}` : ''}`;
+
+  // XP progress for the level (value and percentage)
+  const currentLevelXp = getCharacterDisplayXp(character);
+  const xpToNext = getCharacterXpToNextLevel(character) || 0;
+  const xpPercentage = xpToNext > 0 ? Math.min(100, Math.round((currentLevelXp / xpToNext) * 100)) : 100;
 
   const tabs = [
     { id: 'stats', label: 'Ações', icon: '📊' },
     { id: 'skills', label: 'Perícias', icon: '🎯' },
+    { id: 'abilities', label: 'Habilidades', icon: '✨' },
     { id: 'inventory', label: 'Inventário', icon: '🎒' },
     { id: 'notes', label: 'Notas', icon: '📝' },
   ];
@@ -213,6 +221,11 @@ function CharacterDetail() {
             <p>
               {raceDefinition?.name || 'Raça'} • {classDefinition?.name || 'Classe'} • Nível {character.level} ({displayXp} XP)
             </p>
+            <div className="xp-bar">
+              <div className="xp-bar-track">
+                <div className="xp-bar-fill" style={{ width: `${xpPercentage}%` }} />
+              </div>
+            </div>
           </div>
         </section>
 
@@ -313,7 +326,6 @@ function CharacterDetail() {
         <div className="tab-content">
           {activeTab === 'stats' && (
             <div className="stats-tab">
-              <p className="tab-info">Use os botões +/- para ajustar PV e PM durante o combate.</p>
               <div className="xp-row">
                 <div className="xp-value">XP: {displayXp}</div>
                 <div className="xp-actions">
@@ -350,6 +362,36 @@ function CharacterDetail() {
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {activeTab === 'abilities' && (
+            <div className="abilities-tab">
+              {character.habilidades && character.habilidades.length > 0 ? (
+                <div className="abilities-list">
+                  {character.habilidades.map((h) => {
+                    const abilityDef = getHabilidadeById(character.characterClass, h.id);
+                    const displayName = h.name || abilityDef?.name || h.id;
+                    return (
+                      <div key={h.id} className="ability-item">
+                        <div className="ability-left">
+                          <div className="ability-name">{displayName}</div>
+                        </div>
+                        <div className="ability-actions">
+                          <Button variant="secondary" size="small" onClick={() => {
+                            setSelectedAbility(abilityDef || h);
+                            setAbilityModalOpen(true);
+                          }}>
+                            Ver
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="tab-info">Nenhuma habilidade adquirida.</p>
+              )}
             </div>
           )}
 
@@ -415,6 +457,19 @@ function CharacterDetail() {
         character={character}
         onSaveAbilities={handleSaveAbilities}
       />
+
+      <Modal isOpen={abilityModalOpen} onClose={() => setAbilityModalOpen(false)} title={selectedAbility?.name || 'Habilidade'}>
+        <div className="ability-detail">
+          <div className="ability-header">
+            <div className="ability-type">{selectedAbility?.type || ''}{selectedAbility?.level ? ` • ${selectedAbility.level}º nível` : ''}</div>
+            {selectedAbility?.tags && <div className="ability-tags">{selectedAbility.tags.join(', ')}</div>}
+          </div>
+          <p className="ability-description">{selectedAbility?.description || 'Sem descrição disponível.'}</p>
+          <div className="modal-actions">
+            <Button variant="secondary" onClick={() => setAbilityModalOpen(false)}>Fechar</Button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal isOpen={xpModalOpen} onClose={() => setXpModalOpen(false)} title="Adicionar XP">
         <div className="xp-modal">

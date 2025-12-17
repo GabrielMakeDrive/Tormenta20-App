@@ -335,7 +335,19 @@ export const getCharacterDisplayXp = (characterLike) => {
   const level = characterLike?.level || 1;
   const experience = characterLike?.experience || 0;
   const currentLevelXp = LEVEL_PROGRESSION.find(l => l.level === level)?.experience || 0;
+  const nextLevelXp = LEVEL_PROGRESSION.find(l => l.level === level + 1)?.experience || null;
   return Math.max(0, experience - currentLevelXp);
+};
+
+/**
+ * Obtém o XP necessário entre o nível atual e o próximo nível.
+ */
+export const getCharacterXpToNextLevel = (characterLike) => {
+  const level = characterLike?.level || 1;
+  const currentLevelXp = LEVEL_PROGRESSION.find(l => l.level === level)?.experience || 0;
+  const nextLevelXp = LEVEL_PROGRESSION.find(l => l.level === level + 1)?.experience || null;
+  // Retorna um número (0 no nível máximo) para facilitar cálculos de porcentagem
+  return level === 20 ? 0 : (nextLevelXp - currentLevelXp);
 };
 
 /**
@@ -349,6 +361,14 @@ export const getCharacterLevelFromXp = (experience) => {
     }
   }
   return 1;
+};
+
+/**
+ * Retorna o XP mínimo para o nível informado (0 para nível desconhecido)
+ */
+export const getMinimumXpForLevel = (level) => {
+  const lv = safeLevel(level);
+  return LEVEL_PROGRESSION.find(l => l.level === lv)?.experience || 0;
 };
 
 /**
@@ -380,7 +400,7 @@ export const checkPrerequisites = (character, prerequisites = []) => {
         return character.skills.includes(req.value);
       case 'level':
         return character.level >= req.value;
-      case 'power':
+      case 'Poder':
         return character.habilidades.some(h => h.id === req.value);
       case 'tag':
         // Verifica se possui poderes com a tag específica

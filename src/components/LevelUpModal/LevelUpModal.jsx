@@ -6,7 +6,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '../Modal/Modal';
 import Button from '../Button/Button';
-import { calculateMaxHp, calculateMaxMp, getHabilidadesForClass, checkPrerequisites } from '../../models';
+import { calculateMaxHp, calculateMaxMp, getHabilidadesForClass, checkPrerequisites, getHabilidadeById } from '../../models';
 import './LevelUpModal.css';
 
 
@@ -23,10 +23,10 @@ function LevelUpModal({ isOpen, onClose, character, onSaveAbilities }) {
       const newSteps = [];
       const autoFeatures = [];
       const classAbilities = getHabilidadesForClass(character.characterClass);
-
+      console.log('Character', character);
       // 1. Identify Automatic Features for this level
       classAbilities.forEach(h => {
-        if (h.type === 'feature' && h.level === character.level) {
+        if (h.type === 'Habilidade base' && h.level === character.level) {
           // Check if not already owned
           if (!character.habilidades.some(owned => owned.id === h.id)) {
             autoFeatures.push(h);
@@ -41,22 +41,42 @@ function LevelUpModal({ isOpen, onClose, character, onSaveAbilities }) {
       // +1 additional choice for that type.
       const typeCounts = new Map();
 
-      // Default: only 'power' has a base choice (1) if eligible
-      const hasEligiblePower = classAbilities.some(h => h.type === 'power' && !character.habilidades.some(owned => owned.id === h.id) && checkPrerequisites(character, h.prerequisites));
+      // Default: only 'Poder' has a base choice (1) if eligible
+      const hasEligiblePower = classAbilities.some(h => h.type === 'Poder' && !character.habilidades.some(owned => owned.id === h.id) && checkPrerequisites(character, h.prerequisites));
       if (hasEligiblePower) {
-        typeCounts.set('power', 1);
+        typeCounts.set('Poder', 1);
       }
 
       // For each feature that grantsSelection for a type and has been reached by the character's level,
       // increment the choice count for that type (each such feature adds +1 choice)
       classAbilities.forEach(h => {
-        if (h.type === 'feature' && h.grantsSelection && h.level <= character.level) {
+        if (h.type === 'Habilidade base' && h.grantsSelection && h.level <= character.level) {
           const t = h.grantsSelection;
           const current = typeCounts.get(t) || 0;
           typeCounts.set(t, current + 1);
+          console.log(`Habilidade base ${h.name} grants an additional selection for type ${t}. Total now: ${typeCounts.get(t)}`);
         }
       });
+
+      //Para tipos não Poder, subtrair as habilidades já possuídas
+      typeCounts.forEach((count, t) => {
+        if (t !== 'Poder') {
+          
+          const ownedCount = character.habilidades.filter(h =>
+            getHabilidadeById(character.characterClass, h.id)?.type === t
+          ).length;
+          console.log(`Type ${t} has count ${count} before subtracting owned (${ownedCount})`);
+          const newCount = count - ownedCount;
+          if (newCount <= 0) {
+            typeCounts.delete(t);
+          } else {
+            typeCounts.set(t, newCount);
+          }
+        }
+      });
+
       console.log('Final type counts with grantsSelection:', typeCounts);
+
       // Create steps: one step per available choice
       Array.from(typeCounts.entries()).forEach(([t, count]) => {
         for (let i = 0; i < count; i++) {
@@ -141,6 +161,7 @@ function LevelUpModal({ isOpen, onClose, character, onSaveAbilities }) {
           <div className="powers-list-scroll">
             {list.map(item => {
               const meetsPrereq = checkPrerequisites(character, item.prerequisites);
+              if (!meetsPrereq) return null;
               return (
                 <div 
                   key={item.id} 

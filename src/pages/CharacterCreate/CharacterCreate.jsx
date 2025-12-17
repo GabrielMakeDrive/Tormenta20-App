@@ -14,6 +14,8 @@ import {
   getHabilidadesForClass,
   calculateMaxHp,
   calculateMaxMp,
+  getCharacterLevelFromXp,
+  getMinimumXpForLevel,
 } from '../../models';
 import { saveCharacter, getCharacterById, deleteCharacter } from '../../services';
 import './CharacterCreate.css';
@@ -61,7 +63,7 @@ const formatPrerequisites = (prerequisites = []) => {
         return `Treinado em ${req.value.charAt(0).toUpperCase() + req.value.slice(1)}`;
       case 'level':
         return `${req.value}º nível`;
-      case 'power':
+      case 'Poder':
         return `Poder ${req.value}`;
       case 'tag':
         return `Poder de ${req.value}`;
@@ -109,6 +111,31 @@ const clampLevelValue = (value) => {
     return 1;
   }
   return Math.max(1, Math.min(20, Math.trunc(numeric)));
+};
+
+/**
+ * Ajusta o XP para ficar consistente com o nível informado.
+ * - Se o XP atual corresponder a nível maior que `level`, retorna o XP mínimo daquele `level`.
+ * - Se o XP atual for menor que o XP mínimo do `level`, retorna o XP mínimo do `level`.
+ * - Caso contrário, retorna o XP recebido.
+ */
+const ensureExperienceMatchesLevel = (level, experience) => {
+  const currentXp = Number(experience || 0);
+  const lvl = clampLevelValue(level);
+  const minXp = getMinimumXpForLevel(lvl);
+  const xpLevel = getCharacterLevelFromXp(currentXp);
+
+  // Caso o XP corresponda a um nível superior, forçamos para o mínimo do nível desejado
+  if (xpLevel > lvl) {
+    return minXp;
+  }
+
+  // Caso o XP seja menor que o mínimo do nível selecionado, elevamos ao mínimo
+  if (currentXp < minXp) {
+    return minXp;
+  }
+
+  return currentXp;
 };
 
 const getMandatorySkills = (characterClass) => {
@@ -267,7 +294,11 @@ function CharacterCreate({ mode = 'create' }) {
       const current = clampLevelValue(prev.level || 1);
       const next = clampLevelValue(current + delta);
       if (next === current) return prev;
-      return { ...prev, level: next };
+      const adjustedXp = ensureExperienceMatchesLevel(next, prev.experience);
+      if (Number(adjustedXp) !== Number(prev.experience || 0)) {
+        setToast({ message: `XP ajustado para ${adjustedXp} (mínimo do nível ${next}).`, type: 'info' });
+      }
+      return { ...prev, level: next, experience: adjustedXp };
     });
   };
 
@@ -292,7 +323,12 @@ function CharacterCreate({ mode = 'create' }) {
     console.log('handleChange', field, value);
     setFormData(prev => {
       if (field === 'level') {
-        return { ...prev, level: clampLevelValue(value) };
+        const newLevel = clampLevelValue(value);
+        const adjustedXp = ensureExperienceMatchesLevel(newLevel, prev.experience);
+        if (Number(adjustedXp) !== Number(prev.experience || 0)) {
+          setToast({ message: `XP ajustado para ${adjustedXp} (mínimo do nível ${newLevel}).`, type: 'info' });
+        }
+        return { ...prev, level: newLevel, experience: adjustedXp };
       }
       if (field === 'characterClass') {
         // Reset skills and habilidades when class changes
@@ -476,6 +512,13 @@ function CharacterCreate({ mode = 'create' }) {
       habilidades: [...(formData.habilidades || [])],
       experience: Number(formData.experience || 0),
     };
+
+    // Ensure experience does not imply a higher level than selected
+    const correctedExperience = ensureExperienceMatchesLevel(normalizedCharacter.level, normalizedCharacter.experience);
+    if (Number(correctedExperience) !== Number(normalizedCharacter.experience)) {
+      normalizedCharacter.experience = correctedExperience;
+      setToast({ message: `XP ajustado para ${correctedExperience} (mínimo do nível ${normalizedCharacter.level}).`, type: 'info' });
+    }
 
     const fallbackHp = isEditMode ? (originalCharacter?.hp?.max ?? DEFAULT_HP) : DEFAULT_HP;
     const fallbackMp = isEditMode ? (originalCharacter?.mp?.max ?? 0) : 0;
@@ -802,7 +845,7 @@ function CharacterCreate({ mode = 'create' }) {
               <div className="talents-section">
                 <div className="talents-list">
                   {getHabilidadesForClass(selectedClassDefinition.id)
-                    .filter(h => h.type === 'power')
+                    .filter(h => h.type === 'Poder')
                     .map(habilidade => {
                     const isSelected = (formData.habilidades || []).some(h => h.id === habilidade.id);
                     return (
