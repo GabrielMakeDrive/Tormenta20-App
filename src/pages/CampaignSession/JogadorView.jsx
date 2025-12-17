@@ -432,6 +432,7 @@ function JogadorView() {
                       <Button
                         variant="secondary"
                         size="large"
+                        fullWidth
                         onClick={() => {
                           setShowScanner(false);
                           setShowManualInput(true);

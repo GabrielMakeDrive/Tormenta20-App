@@ -513,10 +513,11 @@ function MestreView() {
             {/* Controles do Mestre */}
             <section className="controls-section">
               <h4>🎮 Adicionar Jogador</h4>
-              <div className="controls-grid">
+              <div className="action-buttons">
                 <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
                   <Button 
                     variant="primary"
+                    fullWidth
                     onClick={() => {
                       setShowManualInput(false);
                       setShowScanner(true);
@@ -526,6 +527,7 @@ function MestreView() {
                   </Button>
                   <Button
                     variant="secondary"
+                    fullWidth
                     onClick={() => {
                       setShowScanner(false);
                       setShowManualInput(true);
@@ -537,7 +539,7 @@ function MestreView() {
                     variant="danger"
                     onClick={closeSession}
                   >
-                    ❌
+                    X
                   </Button>
                 </div>
 
