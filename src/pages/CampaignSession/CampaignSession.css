@@ -59,7 +59,6 @@
   background-color: #ffffff;
   border-radius: var(--radius-md);
   margin: var(--spacing-md) auto;
-  max-width: 280px;
 }
 
 .qr-container svg,
@@ -170,6 +169,23 @@
   opacity: 0.7;
 }
 
+.player-card.reconnecting {
+  border-left-color: var(--primary-color);
+}
+
+.reconnect-reason {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--warning-color);
+}
+
+.player-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+
 .player-avatar {
   font-size: 2rem;
   width: 48px;
@@ -229,6 +245,11 @@
   color: var(--danger-color);
 }
 
+.status-badge.reconnecting {
+  background-color: rgba(33, 150, 243, 0.2);
+  color: var(--primary-color);
+}
+
 .player-stats {
   display: flex;
   gap: var(--spacing-sm);
@@ -241,6 +262,55 @@
 
 .stat-mp {
   color: var(--info-color);
+}
+
+.restart-section {
+  background-color: var(--surface-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.restart-section h4 {
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.restart-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.restart-card {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background-color: var(--hover-color);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+}
+
+.restart-header p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.restart-qr {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-sm);
+  background-color: #fff;
+  border-radius: var(--radius-md);
+}
+
+.restart-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
 }
 
 .empty-players {
@@ -555,6 +625,77 @@
   font-size: 1rem;
 }
 
+/* Seção de convites pendentes */
+.invites-section {
+  background-color: var(--surface-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.invites-section h4 {
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.invite-card {
+  background-color: var(--hover-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  border-left: 3px solid var(--warning-color);
+}
+
+.invite-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.invite-id {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.invite-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.invite-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.invite-actions .btn {
+  flex: 1;
+  min-width: 100px;
+}
+
+/* Exibição de código */
+.code-display {
+  background-color: var(--hover-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+  margin: var(--spacing-md) 0;
+}
+
+.code-display textarea {
+  background-color: transparent;
+  border: none;
+  resize: none;
+  width: 100%;
+  color: var(--text-primary);
+}
+
 /* Responsividade */
 @media (min-width: 480px) {
   .controls-grid {
@@ -563,5 +704,9 @@
   
   .status-grid {
     grid-template-columns: repeat(4, 1fr);
+  }
+  
+  .invite-actions {
+    flex-wrap: nowrap;
   }
 }

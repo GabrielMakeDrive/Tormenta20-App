@@ -1,75 +1,91 @@
 /**
  * JogadorView - Tela do Jogador para conectar na sessão do Mestre
  * 
- * Fluxo:
+ * Fluxo (v2 - Convites Individuais):
  * 1. Jogador seleciona personagem que usará na sessão
- * 2. Jogador escaneia ou insere manualmente o QR do Mestre
- * 3. Sistema processa offer e gera answer
- * 4. Jogador exibe QR da answer para o Mestre escanear
- * 5. Conexão estabelecida, jogador envia dados do personagem
- * 6. Jogador pode enviar updates e rolagens em tempo real
+ * 2. Jogador recebe código do Mestre (via WhatsApp, etc.)
+ * 3. Jogador cola o código do convite
+ * 4. Sistema gera código de resposta
+ * 5. Jogador copia e envia resposta para o Mestre
+ * 6. Conexão estabelecida, jogador envia dados do personagem
+ * 7. Jogador pode enviar updates e rolagens em tempo real
  * 
- * Estados:
- * - selecting: selecionando personagem
- * - scanning: escaneando/inserindo QR do mestre
- * - generating: gerando answer
- * - waiting: aguardando mestre escanear answer
- * - connected: conectado à sessão
- * - disconnected: desconectado
- * - error: erro na conexão
+ * Arquitetura:
+ * - Cada jogador tem sua própria conexão RTCPeerConnection
+ * - Sem QR Code (SDP muito grande) - usar apenas cópia/cola de texto
+ * - Conexão gerenciada pelo ConnectionProvider
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header, Button, Toast, QRScanner, Modal } from '../../components';
+import { Header, Button, Toast, Modal } from '../../components';
 import { 
-  createPlayerSession,
+  useConnection,
+  SESSION_STATUS,
   isWebRTCSupported,
   isAndroidPlatform 
-} from '../../services/webrtcSession';
+} from '../../services';
 import { loadCharacters, loadSettings } from '../../services';
 import { calculateMaxHp, calculateMaxMp } from '../../models';
-import { QRCodeSVG } from 'qrcode.react';
 import './CampaignSession.css';
 
-// Estados da conexão
+// Estados da conexão (mapeia para SESSION_STATUS do Provider)
 const CONNECTION_STATES = {
-  SELECTING: 'selecting',
-  SCANNING: 'scanning',
-  GENERATING: 'generating',
-  WAITING: 'waiting',
-  CONNECTED: 'connected',
-  DISCONNECTED: 'disconnected',
-  ERROR: 'error',
+  SELECTING: 'selecting', // Estado local inicial antes de conectar
+  GENERATING: SESSION_STATUS.CREATING,
+  WAITING: 'waiting',     // Após gerar answer, aguardando Mestre
+  CONNECTED: SESSION_STATUS.CONNECTED,
+  DISCONNECTED: SESSION_STATUS.DISCONNECTED,
+  ERROR: SESSION_STATUS.ERROR,
 };
 
 function JogadorView() {
   const navigate = useNavigate();
   
-  // Estado da conexão
-  const [connectionState, setConnectionState] = useState(CONNECTION_STATES.SELECTING);
-  const [playerSession, setPlayerSession] = useState(null);
-  const [answerQR, setAnswerQR] = useState(null);
+  // === Conexão via Context (Provider) ===
+  const {
+    status,
+    answerQR,
+    errorMessage: contextErrorMessage,
+    isPlayer,
+    startPlayerSession,
+    endSession,
+    sendCharacterUpdate,
+    // sendDiceRoll disponível via contexto para uso futuro
+    updateCallbacks,
+  } = useConnection();
+  
+  // === Estado local de UI ===
+  // Estado da conexão (combinação de estado local + contexto)
+  const [localState, setLocalState] = useState(CONNECTION_STATES.SELECTING);
   const [errorMessage, setErrorMessage] = useState(null);
   
   // Personagens e seleção
   const [characters, setCharacters] = useState([]);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   
-  // Scanner de QR
-  const [showScanner, setShowScanner] = useState(false);
-  // Entrada manual do QR do Mestre (fallback)
-  const [showManualInput, setShowManualInput] = useState(false);
-  const [manualInputValue, setManualInputValue] = useState('');
+  // Entrada do código do Mestre
+  const [showCodeInput, setShowCodeInput] = useState(false);
+  const [codeInputValue, setCodeInputValue] = useState('');
   
   // Toast
   const [toast, setToast] = useState(null);
   
   // Configurações
   const [settings, setSettings] = useState({ soundEnabled: true, vibrationEnabled: true });
-  
-  // Ref para sessão
-  const sessionRef = useRef(null);
+
+  // Deriva o estado de conexão combinando estado local com contexto
+  const connectionState = (() => {
+    // Se já está conectado no contexto, usar esse estado
+    if (status === SESSION_STATUS.CONNECTED) return CONNECTION_STATES.CONNECTED;
+    if (status === SESSION_STATUS.DISCONNECTED && isPlayer) return CONNECTION_STATES.DISCONNECTED;
+    if (status === SESSION_STATUS.ERROR) return CONNECTION_STATES.ERROR;
+    // Se está criando no contexto e answerQR já existe, é WAITING
+    if (status === SESSION_STATUS.CREATING && answerQR) return CONNECTION_STATES.WAITING;
+    if (status === SESSION_STATUS.CREATING) return CONNECTION_STATES.GENERATING;
+    // Caso contrário, usa estado local
+    return localState;
+  })();
 
   // Carrega personagens e configurações
   useEffect(() => {
@@ -124,18 +140,16 @@ function JogadorView() {
   }, []);
 
   /**
-   * Callbacks para eventos da sessão WebRTC
+   * Callbacks para eventos da sessão WebRTC (registrados no Provider)
    */
   const handleConnected = useCallback(() => {
     console.log('[JogadorView] Conectado ao Mestre!');
-    setConnectionState(CONNECTION_STATES.CONNECTED);
     playFeedback('success');
     setToast({ message: 'Conectado ao Mestre!', type: 'success' });
   }, [playFeedback]);
 
   const handleDisconnected = useCallback(() => {
     console.log('[JogadorView] Desconectado do Mestre');
-    setConnectionState(CONNECTION_STATES.DISCONNECTED);
     playFeedback('error');
     setToast({ message: 'Conexão perdida com o Mestre', type: 'warning' });
   }, [playFeedback]);
@@ -147,18 +161,31 @@ function JogadorView() {
 
   const handleError = useCallback((error) => {
     console.error('[JogadorView] Erro:', error);
+    setErrorMessage(error.error || 'Erro na conexão');
     setToast({ message: error.error || 'Erro na conexão', type: 'error' });
   }, []);
 
+  const handleIceRestartRequired = useCallback(() => {
+    console.log('[JogadorView] Mestre solicitou reinício de ICE');
+    setLocalState(CONNECTION_STATES.SELECTING);
+    setToast({ message: 'Mestre solicitou reinício. Peça um novo convite ao Mestre.', type: 'info' });
+  }, []);
+
+  // Registra callbacks no Provider quando monta ou callbacks mudam
+  useEffect(() => {
+    updateCallbacks({
+      onConnected: handleConnected,
+      onDisconnected: handleDisconnected,
+      onMessage: handleMessage,
+      onError: handleError,
+      onIceRestartRequired: handleIceRestartRequired,
+    });
+  }, [updateCallbacks, handleConnected, handleDisconnected, handleMessage, handleError, handleIceRestartRequired]);
+
   /**
-   * Processa o QR Code do Mestre e gera answer - chamado pelo scanner
+   * Processa o código do Mestre e gera answer (via Provider)
    */
   const processOfferQR = async (offerQR) => {
-    // Fecha o scanner e limpa input manual
-    setShowScanner(false);
-    setShowManualInput(false);
-    setManualInputValue('');
-    
     if (!selectedCharacter) {
       setToast({ message: 'Selecione um personagem primeiro', type: 'error' });
       return;
@@ -166,68 +193,56 @@ function JogadorView() {
 
     if (!isWebRTCSupported()) {
       setErrorMessage('WebRTC não suportado neste navegador');
-      setConnectionState(CONNECTION_STATES.ERROR);
+      setLocalState(CONNECTION_STATES.ERROR);
       return;
     }
 
-    setConnectionState(CONNECTION_STATES.GENERATING);
+    // Fecha input e limpa valor
+    setShowCodeInput(false);
+    setCodeInputValue('');
+
+    setLocalState(CONNECTION_STATES.GENERATING);
     setErrorMessage(null);
 
     try {
       const characterInfo = getCharacterSummary(selectedCharacter);
       
-      const session = await createPlayerSession(offerQR, characterInfo, {
+      await startPlayerSession(offerQR, characterInfo, {
         onConnected: handleConnected,
         onDisconnected: handleDisconnected,
         onMessage: handleMessage,
         onError: handleError,
+        onIceRestartRequired: handleIceRestartRequired,
       });
 
-      sessionRef.current = session;
-      setPlayerSession(session);
-      setAnswerQR(session.answerQR);
-      setConnectionState(CONNECTION_STATES.WAITING);
-      
+      // O estado será atualizado pelo contexto automaticamente
       playFeedback('success');
-      setToast({ message: 'QR gerado! Mostre para o Mestre escanear.', type: 'info' });
+      setToast({ message: 'Código gerado! Envie para o Mestre.', type: 'info' });
       
     } catch (error) {
       console.error('[JogadorView] Erro ao processar offer:', error);
       setErrorMessage(error.message || 'Erro ao conectar');
-      setConnectionState(CONNECTION_STATES.ERROR);
+      setLocalState(CONNECTION_STATES.ERROR);
     }
   };
 
   /**
-   * Envia atualização de status do personagem
+   * Envia atualização de status do personagem (via Provider)
    */
   const sendStatusUpdate = () => {
-    if (!sessionRef.current || !selectedCharacter) return;
+    if (!selectedCharacter) return;
     
     const summary = getCharacterSummary(selectedCharacter);
-    sessionRef.current.sendCharacterUpdate(summary);
+    sendCharacterUpdate(summary);
     
     setToast({ message: 'Status enviado!', type: 'success' });
   };
 
   /**
-   * Envia resultado de rolagem (pode ser chamado externamente)
+   * Copia código de resposta para clipboard
    */
-  const sendRoll = (rollData) => {
-    if (!sessionRef.current) return false;
-    
-    return sessionRef.current.sendDiceRoll({
-      ...rollData,
-      playerName: selectedCharacter?.name || 'Jogador',
-      playerIcon: selectedCharacter?.icon || '🎲',
-    });
-  };
-
-  /**
-   * Copia answer QR para clipboard
-   */
-  // Fallback para cópia do answer QR
-  const [manualAnswerCopyText, setManualAnswerCopyText] = useState(null);
+  // Fallback para cópia do answer
+  const [showAnswerCode, setShowAnswerCode] = useState(false);
 
   const copyAnswerToClipboard = async () => {
     if (!answerQR) return;
@@ -261,43 +276,31 @@ function JogadorView() {
       console.warn('[JogadorView] fallback copy falhou:', err);
     }
 
-    setManualAnswerCopyText(text);
-    setToast({ message: 'Não foi possível copiar automaticamente. Código exibido para cópia manual.', type: 'warning' });
+    // Se não conseguiu copiar, mostra modal com código
+    setShowAnswerCode(true);
+    setToast({ message: 'Código exibido para cópia manual.', type: 'info' });
   };
 
   /**
-   * Fecha conexão e volta
+   * Fecha conexão e volta (via Provider)
    */
   const closeConnection = () => {
-    if (sessionRef.current) {
-      sessionRef.current.close();
-      sessionRef.current = null;
-    }
+    endSession();
     navigate(-1);
   };
 
   /**
-   * Reinicia o fluxo de conexão
+   * Reinicia o fluxo de conexão (via Provider)
    */
   const restartConnection = () => {
-    if (sessionRef.current) {
-      sessionRef.current.close();
-      sessionRef.current = null;
-    }
-    setPlayerSession(null);
-    setAnswerQR(null);
-    setConnectionState(CONNECTION_STATES.SELECTING);
+    endSession();
+    setLocalState(CONNECTION_STATES.SELECTING);
     setErrorMessage(null);
+    setShowCodeInput(false);
+    setCodeInputValue('');
   };
 
-  // Limpa sessão ao desmontar
-  useEffect(() => {
-    return () => {
-      if (sessionRef.current) {
-        sessionRef.current.close();
-      }
-    };
-  }, []);
+  // Nota: cleanup não é mais necessário aqui - o Provider gerencia o ciclo de vida
 
   /**
    * Renderiza seletor de personagem
@@ -413,69 +416,18 @@ function JogadorView() {
                 <section className="qr-section">
                   <h3>📱 Conectar ao Mestre</h3>
                   <p className="qr-subtitle">
-                    Escaneie o QR Code do Mestre para entrar na sessão
+                    Cole o código de convite que o Mestre enviou
                   </p>
                   
                   <div className="action-buttons">
-                    <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                      <Button 
-                        variant="primary"
-                        size="large"
-                        fullWidth
-                        onClick={() => {
-                          setShowManualInput(false);
-                          setShowScanner(true);
-                        }}
-                      >
-                        📷 Escanear QR do Mestre
-                      </Button>
-                      <Button
-                        variant="secondary"
-                        size="large"
-                        fullWidth
-                        onClick={() => {
-                          setShowScanner(false);
-                          setShowManualInput(true);
-                        }}
-                      >
-                        📝 Inserir Código
-                      </Button>
-                    </div>
-
-                    {/* Entrada manual (se ativada) */}
-                    {showManualInput && (
-                        <div className="manual-input-section">
-                        <textarea
-                            autoFocus
-                            placeholder="Cole aqui o código do QR do Mestre..."
-                            value={manualInputValue}
-                            onChange={(e) => setManualInputValue(e.target.value)}
-                            rows={5}
-                        />
-                        <div className="input-actions">
-                            <Button 
-                            variant="primary"
-                            onClick={() => {
-                                if (manualInputValue && manualInputValue.trim()) {
-                                processOfferQR(manualInputValue.trim());
-                                }
-                            }}
-                            disabled={!manualInputValue.trim()}
-                            >
-                            Conectar
-                            </Button>
-                            <Button 
-                            variant="secondary"
-                            onClick={() => {
-                                setShowManualInput(false);
-                                setManualInputValue('');
-                            }}
-                            >
-                            Cancelar
-                            </Button>
-                        </div>
-                        </div>
-                    )}
+                    <Button 
+                      variant="primary"
+                      size="large"
+                      fullWidth
+                      onClick={() => setShowCodeInput(true)}
+                    >
+                      📝 Inserir Código do Mestre
+                    </Button>
                   </div>
 
                 </section>
@@ -483,10 +435,11 @@ function JogadorView() {
                 <section className="info-section">
                   <div className="info-card">
                     <h4>💡 Como conectar</h4>
-                    <p>1. O Mestre inicia a sessão e mostra o QR</p>
-                    <p>2. Escaneie o QR do Mestre</p>
-                    <p>3. Mostre seu QR de resposta para o Mestre</p>
-                    <p>4. Pronto! Você está na sessão</p>
+                    <p>1. Peça para o Mestre gerar um convite</p>
+                    <p>2. O Mestre envia o código (WhatsApp, etc.)</p>
+                    <p>3. Cole o código aqui e gere sua resposta</p>
+                    <p>4. Envie sua resposta para o Mestre</p>
+                    <p>5. Pronto! Você está na sessão</p>
                   </div>
                 </section>
               </>
@@ -502,32 +455,37 @@ function JogadorView() {
           </div>
         )}
 
-        {/* Estado: Aguardando Mestre escanear */}
+        {/* Estado: Aguardando Mestre processar resposta */}
         {connectionState === CONNECTION_STATES.WAITING && (
           <>
             <section className="qr-section">
-              <h3>📱 Seu QR de Resposta</h3>
+              <h3>📤 Envie sua Resposta</h3>
               <p className="qr-subtitle">
-                Mostre este QR Code para o Mestre escanear ou copie o código
+                Copie o código abaixo e envie para o Mestre
               </p>
-              <div className="qr-container">
-                {answerQR ? (
-                  <QRCodeSVG 
-                    value={answerQR} 
-                    size={220}
-                    level="L"
-                    includeMargin={false}
-                  />
-                ) : (
-                  <div className="qr-placeholder">Gerando...</div>
-                )}
+              
+              <div className="code-display">
+                <textarea
+                  readOnly
+                  value={answerQR || 'Gerando...'}
+                  style={{ 
+                    width: '100%', 
+                    minHeight: 100, 
+                    fontFamily: 'monospace', 
+                    fontSize: '0.7rem',
+                    wordBreak: 'break-all'
+                  }}
+                  onClick={(e) => e.target.select()}
+                />
               </div>
-              <div className="qr-actions">
+              
+              <div className="qr-actions" style={{ marginTop: '1rem' }}>
                 <Button 
                   variant="primary"
+                  fullWidth
                   onClick={copyAnswerToClipboard}
                 >
-                  📋 Copiar Código
+                  📋 Copiar Código de Resposta
                 </Button>
               </div>
             </section>
@@ -618,7 +576,7 @@ function JogadorView() {
         {connectionState === CONNECTION_STATES.ERROR && (
           <section className="qr-section">
             <h3>❌ Erro</h3>
-            <p className="qr-subtitle">{errorMessage}</p>
+            <p className="qr-subtitle">{errorMessage || contextErrorMessage}</p>
             <div className="action-buttons">
               <Button 
                 variant="primary"
@@ -637,15 +595,6 @@ function JogadorView() {
         )}
       </main>
 
-      {/* Scanner de QR Code */}
-      {showScanner && (
-        <QRScanner
-          onScan={processOfferQR}
-          onClose={() => setShowScanner(false)}
-          onError={(err) => console.warn('[JogadorView] Erro no scanner:', err)}
-        />
-      )}
-
       {/* Toast de feedback */}
       {toast && (
         <Toast
@@ -656,49 +605,88 @@ function JogadorView() {
         />
       )}
 
-      {/* Modal com o código caso copy automático falhe */}
-      {manualAnswerCopyText && (
+      {/* Modal para inserir código do Mestre */}
+      {showCodeInput && (
         <Modal
-          isOpen={!!manualAnswerCopyText}
-          title="Seu Código de Resposta"
-          onClose={() => setManualAnswerCopyText(null)}
+          isOpen={showCodeInput}
+          title="📝 Código do Mestre"
+          onClose={() => {
+            setShowCodeInput(false);
+            setCodeInputValue('');
+          }}
         >
           <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+              Cole o código de convite que o Mestre enviou:
+            </p>
             <textarea
-              readOnly
-              value={manualAnswerCopyText}
-              style={{ width: '100%', minHeight: 120, fontFamily: 'monospace' }}
+              autoFocus
+              placeholder="Cole aqui o código do convite..."
+              value={codeInputValue}
+              onChange={(e) => setCodeInputValue(e.target.value)}
+              style={{ 
+                width: '100%', 
+                minHeight: 100, 
+                fontFamily: 'monospace', 
+                fontSize: '0.75rem'
+              }}
             />
             <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
               <Button
                 variant="primary"
                 onClick={() => {
-                  try {
-                    const ta = document.createElement('textarea');
-                    ta.value = manualAnswerCopyText;
-                    ta.setAttribute('readonly', '');
-                    ta.style.position = 'absolute';
-                    ta.style.left = '-9999px';
-                    document.body.appendChild(ta);
-                    ta.select();
-                    const ok = document.execCommand('copy');
-                    document.body.removeChild(ta);
-                    if (ok) {
-                      setToast({ message: 'Código copiado!', type: 'success' });
-                      setManualAnswerCopyText(null);
-                      return;
-                    }
-                  } catch (err) {
-                    console.warn('[JogadorView] copy manual falhou:', err);
+                  if (codeInputValue.trim()) {
+                    processOfferQR(codeInputValue.trim());
                   }
-
-                  setToast({ message: 'Selecione e copie manualmente o texto acima.', type: 'info' });
                 }}
+                disabled={!codeInputValue.trim()}
+              >
+                Conectar
+              </Button>
+              <Button 
+                variant="secondary" 
+                onClick={() => {
+                  setShowCodeInput(false);
+                  setCodeInputValue('');
+                }}
+              >
+                Cancelar
+              </Button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {/* Modal com código de resposta para cópia */}
+      {showAnswerCode && answerQR && (
+        <Modal
+          isOpen={showAnswerCode}
+          title="📤 Seu Código de Resposta"
+          onClose={() => setShowAnswerCode(false)}
+        >
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
+              Selecione e copie o código abaixo, depois envie para o Mestre:
+            </p>
+            <textarea
+              readOnly
+              value={answerQR}
+              style={{ 
+                width: '100%', 
+                minHeight: 120, 
+                fontFamily: 'monospace',
+                fontSize: '0.7rem'
+              }}
+              onClick={(e) => e.target.select()}
+            />
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <Button
+                variant="primary"
+                onClick={copyAnswerToClipboard}
               >
                 📋 Copiar
               </Button>
-
-              <Button variant="secondary" onClick={() => setManualAnswerCopyText(null)}>
+              <Button variant="secondary" onClick={() => setShowAnswerCode(false)}>
                 Fechar
               </Button>
             </div>

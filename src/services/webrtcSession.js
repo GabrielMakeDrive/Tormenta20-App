@@ -39,6 +39,15 @@ const ICE_GATHERING_TIMEOUT = 5000;
 // Timeout para conexão individual (ms)
 const CONNECTION_TIMEOUT = 20000;
 
+// Tempo de tolerância antes de disparar restart sobre perda temporária (ms)
+const GRACE_PERIOD_MS = 12000;
+
+// Limite de reinícios de ICE por jogador antes de notificar erro crítico
+const MAX_ICE_RESTARTS = 3;
+
+// Intervalo periódico para ping no canal (ms)
+const HEARTBEAT_INTERVAL_MS = 3000;
+
 /**
  * Gera um UUID v4 simples
  */
@@ -121,10 +130,131 @@ const waitForIceGathering = (peerConnection, timeout = ICE_GATHERING_TIMEOUT) =>
 export const createHostSession = async (callbacks = {}) => {
   const sessionId = generateUUID();
   const players = new Map(); // Map<playerId, { connection, channel, info }>
+  const {
+    onPlayerConnected,
+    onPlayerDisconnected,
+    onMessage,
+    onError,
+    onIceRestart,
+  } = callbacks;
   
   // Estado da sessão
-  let offerData = null;
   let isActive = true;
+  let heartbeatInterval = null;
+
+  const clearPlayerGraceTimer = (player) => {
+    if (player?.graceTimer) {
+      clearTimeout(player.graceTimer);
+      player.graceTimer = null;
+    }
+  };
+
+  const scheduleGracePeriod = (playerId) => {
+    const player = players.get(playerId);
+    if (!player) {
+      return;
+    }
+    clearPlayerGraceTimer(player);
+    player.graceTimer = setTimeout(async () => {
+      await restartIceForPlayer(playerId, 'grace-timeout').catch((error) => {
+        console.error(`[Host] Falha ao reiniciar ICE (grace): ${error}`);
+      });
+    }, GRACE_PERIOD_MS);
+  };
+
+  const handleIceConnectionState = (playerId) => {
+    const player = players.get(playerId);
+    if (!player) {
+      return;
+    }
+    const iceState = player.connection.iceConnectionState;
+    console.log(`[Host] ICE connection state ${playerId}: ${iceState}`);
+
+    if (iceState === 'connected' || iceState === 'completed') {
+      clearPlayerGraceTimer(player);
+      player.iceRestarting = false;
+      player.restartAttempts = 0;
+      player.status = 'connected';
+      onPlayerConnected?.(playerId, player);
+      return;
+    }
+
+    if (iceState === 'disconnected') {
+      scheduleGracePeriod(playerId);
+    }
+
+    if (iceState === 'failed') {
+      clearPlayerGraceTimer(player);
+      restartIceForPlayer(playerId, 'ice-failed');
+    }
+  };
+
+  const startHeartbeat = () => {
+    if (heartbeatInterval) {
+      return;
+    }
+    heartbeatInterval = setInterval(() => {
+      if (!isActive) {
+        return;
+      }
+      players.forEach((player, playerId) => {
+        if (player.status === 'connected') {
+          sendToPlayer(playerId, { type: 'ping', payload: { sessionId, heartbeat: true } });
+        }
+      });
+    }, HEARTBEAT_INTERVAL_MS);
+  };
+
+  const stopHeartbeat = () => {
+    if (heartbeatInterval) {
+      clearInterval(heartbeatInterval);
+      heartbeatInterval = null;
+    }
+  };
+
+  const restartIceForPlayer = async (playerId, reason = 'ice-restart') => {
+    const player = players.get(playerId);
+    if (!player) {
+      return null;
+    }
+    if (player.iceRestarting) {
+      return null;
+    }
+    if (player.restartAttempts >= MAX_ICE_RESTARTS) {
+      const errorMessage = 'Limite de reinício de ICE atingido';
+      console.warn(`[Host] ${errorMessage} para ${playerId}`);
+      onError?.({ playerId, error: errorMessage });
+      return null;
+    }
+
+    player.iceRestarting = true;
+    player.restartAttempts += 1;
+    try {
+      clearPlayerGraceTimer(player);
+      await player.connection.restartIce();
+      const offer = await player.connection.createOffer();
+      await player.connection.setLocalDescription(offer);
+      await waitForIceGathering(player.connection);
+      player.pendingOffer = {
+        type: player.connection.localDescription.type,
+        sdp: player.connection.localDescription.sdp,
+      };
+      player.status = 'reconnecting';
+      const payload = {
+        sessionId,
+        playerId,
+        offer: player.pendingOffer,
+        reason,
+      };
+      onIceRestart?.(playerId, payload);
+      return payload;
+    } catch (error) {
+      console.error(`[Host] Falha ao reiniciar ICE para ${playerId}:`, error);
+      player.iceRestarting = false;
+      onError?.({ playerId, error: 'Falha no restart de ICE', detail: error });
+      return null;
+    }
+  };
 
   /**
    * Cria uma nova conexão para um jogador
@@ -165,21 +295,30 @@ export const createHostSession = async (callbacks = {}) => {
       }
     };
 
+    players.set(playerId, {
+      connection: peerConnection,
+      channel: dataChannel,
+      status: 'pending',
+      info: null,
+      graceTimer: null,
+      iceRestarting: false,
+      restartAttempts: 0,
+      pendingOffer: null,
+    });
+
     // Monitora estado da conexão
     peerConnection.onconnectionstatechange = () => {
       const state = peerConnection.connectionState;
       console.log(`[Host] Estado da conexão ${playerId}: ${state}`);
-      
-      if (state === 'connected') {
-        const playerInfo = players.get(playerId);
-        if (playerInfo) {
-          playerInfo.status = 'connected';
-          callbacks.onPlayerConnected?.(playerId, playerInfo);
-        }
-      } else if (state === 'disconnected' || state === 'failed' || state === 'closed') {
+
+      if (state === 'disconnected' || state === 'failed' || state === 'closed') {
         handlePlayerDisconnect(playerId);
       }
     };
+
+    peerConnection.addEventListener('iceconnectionstatechange', () => {
+      handleIceConnectionState(playerId);
+    });
 
     // Cria offer
     const offer = await peerConnection.createOffer();
@@ -189,12 +328,6 @@ export const createHostSession = async (callbacks = {}) => {
     await waitForIceGathering(peerConnection);
 
     // Armazena conexão do jogador
-    players.set(playerId, {
-      connection: peerConnection,
-      channel: dataChannel,
-      status: 'pending',
-      info: null,
-    });
 
     // Retorna dados da offer para QR Code
     return {
@@ -219,6 +352,10 @@ export const createHostSession = async (callbacks = {}) => {
     try {
       const answer = new RTCSessionDescription(answerData);
       await player.connection.setRemoteDescription(answer);
+      player.pendingOffer = null;
+      player.iceRestarting = false;
+      player.status = 'connected';
+      clearPlayerGraceTimer(player);
       
       return true;
     } catch (error) {
@@ -241,7 +378,7 @@ export const createHostSession = async (callbacks = {}) => {
         const player = players.get(playerId);
         if (player) {
           player.info = payload;
-          callbacks.onPlayerConnected?.(playerId, { ...player, info: payload });
+          onPlayerConnected?.(playerId, { ...player, info: payload });
         }
         // Responde com ack
         sendToPlayer(playerId, { type: 'ack', payload: { received: 'hello' } });
@@ -252,11 +389,11 @@ export const createHostSession = async (callbacks = {}) => {
         if (playerData) {
           playerData.info = { ...playerData.info, ...payload };
         }
-        callbacks.onMessage?.(playerId, message);
+        onMessage?.(playerId, message);
         break;
 
       case 'diceRoll':
-        callbacks.onMessage?.(playerId, message);
+        onMessage?.(playerId, message);
         // Opcionalmente broadcast para outros jogadores
         break;
 
@@ -270,7 +407,7 @@ export const createHostSession = async (callbacks = {}) => {
 
       default:
         console.warn(`[Host] Tipo de mensagem desconhecido: ${type}`);
-        callbacks.onMessage?.(playerId, message);
+        onMessage?.(playerId, message);
     }
   };
 
@@ -282,7 +419,10 @@ export const createHostSession = async (callbacks = {}) => {
     
     if (player && player.status !== 'disconnected') {
       player.status = 'disconnected';
-      callbacks.onPlayerDisconnected?.(playerId, player.info);
+      player.iceRestarting = false;
+      player.pendingOffer = null;
+      clearPlayerGraceTimer(player);
+      onPlayerDisconnected?.(playerId, player.info);
     }
   };
 
@@ -347,8 +487,10 @@ export const createHostSession = async (callbacks = {}) => {
    */
   const close = () => {
     isActive = false;
+    stopHeartbeat();
     
     players.forEach((player, playerId) => {
+      clearPlayerGraceTimer(player);
       try {
         if (player.channel) {
           player.channel.close();
@@ -364,23 +506,40 @@ export const createHostSession = async (callbacks = {}) => {
     players.clear();
   };
 
-  // Cria offer inicial
-  const initialConnection = await createPlayerConnection();
-  offerData = {
-    sessionId,
-    playerId: initialConnection.playerId,
-    offer: initialConnection.offer,
+  /**
+   * Cria um novo convite para um jogador
+   * Cada convite gera uma nova RTCPeerConnection independente
+   * @returns {Object} - { playerId, offerCode } - código serializado para enviar ao jogador
+   */
+  const createInvite = async () => {
+    const connectionData = await createPlayerConnection();
+    const inviteData = {
+      sessionId,
+      playerId: connectionData.playerId,
+      offer: connectionData.offer,
+    };
+    return {
+      playerId: connectionData.playerId,
+      offerCode: serializeForQR(inviteData),
+      offerData: inviteData,
+    };
   };
+
+  // NÃO cria conexão inicial automaticamente
+  // Cada jogador terá seu próprio convite criado via createInvite()
+
+  startHeartbeat();
 
   return {
     sessionId,
-    offerData,
-    offerQR: serializeForQR(offerData),
+    // Removido: offerData e offerQR (não há mais offer única)
     addAnswer,
-    createPlayerConnection,
+    createInvite, // Novo método para criar convites individuais
+    createPlayerConnection, // Mantido para compatibilidade
     sendToPlayer,
     broadcast,
     getConnectedPlayers,
+    requestIceRestart: restartIceForPlayer,
     close,
     isActive: () => isActive,
   };
@@ -408,6 +567,91 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
   const peerConnection = new RTCPeerConnection(ICE_SERVERS);
   let dataChannel = null;
   let isConnected = false;
+  let graceTimer = null;
+  let restartRequested = false;
+  
+  const {
+    onConnected,
+    onDisconnected,
+    onMessage,
+    onError,
+    onIceRestartRequired,
+  } = callbacks;
+
+  const clearGraceTimer = () => {
+    if (graceTimer) {
+      clearTimeout(graceTimer);
+      graceTimer = null;
+    }
+    restartRequested = false;
+  };
+
+  const notifyIceRestartNeeded = (reason) => {
+    if (restartRequested) {
+      return;
+    }
+    restartRequested = true;
+    onIceRestartRequired?.({ reason });
+  };
+
+  const scheduleGracePeriod = (reason) => {
+    clearGraceTimer();
+    graceTimer = setTimeout(() => {
+      notifyIceRestartNeeded(reason);
+    }, GRACE_PERIOD_MS);
+  };
+
+  const handleIceConnectionState = () => {
+    const state = peerConnection.iceConnectionState;
+    console.log(`[Player] ICE connection state: ${state}`);
+
+    if (state === 'connected' || state === 'completed') {
+      clearGraceTimer();
+      return;
+    }
+
+    if (state === 'disconnected') {
+      scheduleGracePeriod('disconnected');
+    }
+
+    if (state === 'failed') {
+      clearGraceTimer();
+      notifyIceRestartNeeded('ice-failed');
+    }
+  };
+
+  peerConnection.addEventListener('iceconnectionstatechange', handleIceConnectionState);
+
+  const processIncomingOffer = async (incomingOffer, options = {}) => {
+    clearGraceTimer();
+    try {
+      await peerConnection.setRemoteDescription(new RTCSessionDescription(incomingOffer));
+      const answer = await peerConnection.createAnswer();
+      await peerConnection.setLocalDescription(answer);
+      await waitForIceGathering(peerConnection);
+
+      const answerPayload = {
+        playerId,
+        sessionId,
+        answer: {
+          type: peerConnection.localDescription.type,
+          sdp: peerConnection.localDescription.sdp,
+        },
+      };
+
+      if (options.reason) {
+        answerPayload.reason = options.reason;
+      }
+
+      return {
+        answerData: answerPayload,
+        answerQR: serializeForQR(answerPayload),
+      };
+    } catch (error) {
+      console.error('[Player] Falha ao processar offer:', error);
+      throw error;
+    }
+  };
 
   // Aguarda DataChannel criado pelo Mestre
   peerConnection.ondatachannel = (event) => {
@@ -457,7 +701,7 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
     
     if (state === 'disconnected' || state === 'failed' || state === 'closed') {
       isConnected = false;
-      callbacks.onDisconnected?.();
+      onDisconnected?.();
     }
   };
 
@@ -479,7 +723,7 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
         break;
 
       default:
-        callbacks.onMessage?.(message);
+        onMessage?.(message);
     }
   };
 
@@ -534,6 +778,8 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
         dataChannel.close();
       }
       peerConnection.close();
+      clearGraceTimer();
+      restartRequested = false;
     } catch (error) {
       console.error('[Player] Erro ao fechar conexão:', error);
     }
@@ -541,35 +787,19 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
 
   // Processa offer do Mestre
   try {
-    await peerConnection.setRemoteDescription(new RTCSessionDescription(offer));
-    
-    // Cria answer
-    const answer = await peerConnection.createAnswer();
-    await peerConnection.setLocalDescription(answer);
-    
-    // Aguarda coleta de ICE candidates
-    await waitForIceGathering(peerConnection);
-
-    // Dados da answer para QR Code
-    const answerData = {
-      playerId,
-      sessionId,
-      answer: {
-        type: peerConnection.localDescription.type,
-        sdp: peerConnection.localDescription.sdp,
-      },
-    };
+    const { answerData, answerQR } = await processIncomingOffer(offer);
 
     return {
       playerId,
       sessionId,
       answerData,
-      answerQR: serializeForQR(answerData),
+      answerQR,
       sendMessage,
       sendCharacterUpdate,
       sendDiceRoll,
       close,
       isConnected: () => isConnected,
+      handleOffer: processIncomingOffer,
     };
   } catch (error) {
     peerConnection.close();
