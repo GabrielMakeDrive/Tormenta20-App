@@ -16,14 +16,16 @@ const ICE_SERVERS = {
 };
 
 export class PeerConnection {
-  constructor(roomId, deviceId, onStateChange, onMessage) {
+  constructor(roomId, deviceId, hostId, onStateChange, onMessage) {
     this.roomId = roomId;
     this.deviceId = deviceId;
+    this.hostId = hostId; // ID do host para enviar sinais
     this.onStateChange = onStateChange;
     this.onMessage = onMessage;
     this.pc = null;
     this.dataChannel = null;
     this.state = 'DISCONNECTED';
+    this.pendingIceCandidates = []; // Fila de ICE até offer ser processado
   }
 
   setState(state) {
@@ -54,10 +56,11 @@ export class PeerConnection {
 
     this.pc.onicecandidate = async (event) => {
       if (event.candidate) {
+        console.log('[PeerConnection] Enviando ICE candidate para host:', this.hostId);
         await sendSignal(this.roomId, {
           type: 'ice',
           from: this.deviceId,
-          to: 'host', // Assumindo host_id conhecido
+          to: this.hostId,
           payload: { candidate: event.candidate },
         });
       }
@@ -78,17 +81,40 @@ export class PeerConnection {
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
 
+    console.log('[PeerConnection] Enviando answer para host:', this.hostId);
     await sendSignal(this.roomId, {
       type: 'answer',
       from: this.deviceId,
-      to: 'host',
+      to: this.hostId,
       payload: { sdp: answer.sdp },
     });
+
+    // Processar ICE candidates pendentes
+    if (this.pendingIceCandidates.length > 0) {
+      console.log('[PeerConnection] Processando', this.pendingIceCandidates.length, 'ICE candidates pendentes');
+      for (const candidate of this.pendingIceCandidates) {
+        try {
+          await this.pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.warn('[PeerConnection] Erro ao adicionar ICE pendente:', err);
+        }
+      }
+      this.pendingIceCandidates.length = 0;
+    }
   }
 
   async handleIce(payload) {
-    if (this.pc) {
+    // Se ainda não tem pc (offer não processado), enfileirar
+    if (!this.pc) {
+      console.log('[PeerConnection] ICE enfileirado (aguardando offer)');
+      this.pendingIceCandidates.push(payload.candidate);
+      return;
+    }
+    
+    try {
       await this.pc.addIceCandidate(new RTCIceCandidate(payload.candidate));
+    } catch (err) {
+      console.warn('[PeerConnection] Erro ao adicionar ICE:', err);
     }
   }
 

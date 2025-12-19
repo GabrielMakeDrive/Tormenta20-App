@@ -39,6 +39,7 @@ export class HostConnection {
 
     const pc = new RTCPeerConnection(ICE_SERVERS);
     const dataChannel = pc.createDataChannel('sync_channel');
+    const pendingIceCandidates = []; // Fila de ICE até answer ser processado
 
     dataChannel.onopen = () => {
       console.log(`DataChannel aberto com ${peerDeviceId}`);
@@ -78,12 +79,13 @@ export class HostConnection {
       }
     };
 
-    this.connections.set(peerDeviceId, { pc, dataChannel, state: 'SIGNALING' });
+    this.connections.set(peerDeviceId, { pc, dataChannel, state: 'SIGNALING', pendingIceCandidates, hasRemoteDescription: false });
 
     // Criar Offer
     const offer = await pc.createOffer();
     await pc.setLocalDescription(offer);
 
+    console.log('[HostConnection] Enviando offer para peer:', peerDeviceId);
     await sendSignal(this.roomId, {
       type: 'offer',
       from: this.deviceId,
@@ -93,17 +95,48 @@ export class HostConnection {
   }
 
   async handleAnswer(peerDeviceId, payload) {
+    console.log('[HostConnection] Recebeu answer de:', peerDeviceId);
     const conn = this.connections.get(peerDeviceId);
-    if (!conn) return;
+    if (!conn) {
+      console.warn('[HostConnection] Conexão não encontrada para:', peerDeviceId);
+      return;
+    }
 
     await conn.pc.setRemoteDescription(new RTCSessionDescription({ type: 'answer', sdp: payload.sdp }));
+    conn.hasRemoteDescription = true;
     conn.state = 'CONNECTING';
+    console.log('[HostConnection] Answer processado, estado: CONNECTING');
+
+    // Processar ICE candidates pendentes
+    if (conn.pendingIceCandidates && conn.pendingIceCandidates.length > 0) {
+      console.log('[HostConnection] Processando', conn.pendingIceCandidates.length, 'ICE candidates pendentes');
+      for (const candidate of conn.pendingIceCandidates) {
+        try {
+          await conn.pc.addIceCandidate(new RTCIceCandidate(candidate));
+        } catch (err) {
+          console.warn('[HostConnection] Erro ao adicionar ICE pendente:', err);
+        }
+      }
+      conn.pendingIceCandidates.length = 0; // Limpar fila
+    }
+
     this.checkOverallState();
   }
 
   async handleIce(peerDeviceId, candidate) {
+    console.log('[HostConnection] Recebeu ICE de:', peerDeviceId);
     const conn = this.connections.get(peerDeviceId);
-    if (!conn) return;
+    if (!conn) {
+      console.warn('[HostConnection] Conexão não encontrada para ICE:', peerDeviceId);
+      return;
+    }
+
+    // Se ainda não tem remoteDescription, enfileirar
+    if (!conn.hasRemoteDescription) {
+      console.log('[HostConnection] ICE enfileirado (aguardando answer)');
+      conn.pendingIceCandidates.push(candidate);
+      return;
+    }
 
     await conn.pc.addIceCandidate(new RTCIceCandidate(candidate));
   }

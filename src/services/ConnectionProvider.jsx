@@ -203,12 +203,24 @@ export function ConnectionProvider({ children }) {
   const handleHostMessage = useCallback((playerId, message) => {
     console.log('[ConnectionProvider] Mensagem de jogador:', playerId, message.type);
 
+    // Processa mensagem hello (handshake inicial)
+    if (message.type === 'hello') {
+      console.log('[ConnectionProvider] Recebeu hello de:', playerId, message.characterInfo);
+      setPlayers(prev =>
+        prev.map(p =>
+          p.playerId === playerId
+            ? { ...p, info: message.characterInfo, status: 'connected' }
+            : p
+        )
+      );
+    }
+
     // Atualiza estado interno para characterUpdate
     if (message.type === 'characterUpdate') {
       setPlayers(prev =>
         prev.map(p =>
           p.playerId === playerId
-            ? { ...p, info: { ...p.info, ...message.payload } }
+            ? { ...p, info: { ...p.info, ...message.data } }
             : p
         )
       );
@@ -321,7 +333,8 @@ export function ConnectionProvider({ children }) {
         };
         setStatus(statusMap[state] || SESSION_STATUS.IDLE);
       }, (peerId, message) => {
-        callbacksRef.current.onMessage?.(peerId, message);
+        // Processar mensagem internamente
+        handleHostMessage(peerId, message);
       });
 
       hostConnectionRef.current = hostConn;
@@ -338,6 +351,7 @@ export function ConnectionProvider({ children }) {
           for (const participant of participants) {
             const peerId = participant.device_id;
             if (!knownPeersRef.current.has(peerId)) {
+              console.log('[ConnectionProvider] Host detectou novo peer:', peerId);
               knownPeersRef.current.add(peerId);
               await hostConn.addPeer(peerId);
               setPlayers(prev => [...prev, { playerId: peerId, status: 'connecting' }]);
@@ -345,9 +359,19 @@ export function ConnectionProvider({ children }) {
           }
 
           const signals = await getSignals(room_id, deviceId);
-          for (const signal of signals) {
+          // Filtrar apenas answer e ice (ignorar offers que são do próprio host)
+          const relevantSignals = signals.filter(s => s.type === 'answer' || s.type === 'ice');
+          if (relevantSignals.length > 0) {
+            console.log('[ConnectionProvider] Host recebeu signals relevantes:', relevantSignals.length);
+          }
+          for (const signal of relevantSignals) {
+            console.log('[ConnectionProvider] Host processando signal:', signal.type, 'de:', signal.from);
             if (signal.type === 'answer') {
               await hostConn.handleAnswer(signal.from, signal.payload);
+              // Atualizar status do jogador para conectado
+              setPlayers(prev => prev.map(p => 
+                p.playerId === signal.from ? { ...p, status: 'connected' } : p
+              ));
             } else if (signal.type === 'ice') {
               await hostConn.handleIce(signal.from, signal.payload.candidate);
             }
@@ -406,12 +430,13 @@ export function ConnectionProvider({ children }) {
     try {
       // Entrar na sala via API
       const { token, host_id } = await joinRoom(roomId, deviceId);
+      console.log('[ConnectionProvider] Player entrou na sala. Host ID:', host_id);
       setRoomId(roomId);
       setApiToken(token);
       setRole('peer');
 
-      // Criar PeerConnection
-      const peerConn = new PeerConnection(roomId, deviceId, (state) => {
+      // Criar PeerConnection com host_id para sinalização correta
+      const peerConn = new PeerConnection(roomId, deviceId, host_id, (state) => {
         const statusMap = {
           DISCONNECTED: SESSION_STATUS.DISCONNECTED,
           SIGNALING: SESSION_STATUS.ACTIVE,
@@ -442,7 +467,11 @@ export function ConnectionProvider({ children }) {
       const pollSignals = async () => {
         try {
           const signals = await getSignals(roomId, deviceId);
+          if (signals.length > 0) {
+            console.log('[ConnectionProvider] Player recebeu signals:', signals.length);
+          }
           for (const signal of signals) {
+            console.log('[ConnectionProvider] Processando signal:', signal.type, 'de:', signal.from);
             if (signal.type === 'offer') {
               await peerConn.handleOffer(signal.payload);
             } else if (signal.type === 'ice') {
@@ -453,6 +482,9 @@ export function ConnectionProvider({ children }) {
           console.error('Erro no polling de signals:', error);
         }
       };
+
+      // Executar primeiro poll imediatamente
+      pollSignals();
 
       // Polling a cada 2s
       const pollInterval = setInterval(pollSignals, 2000);

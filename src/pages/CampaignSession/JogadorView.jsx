@@ -194,7 +194,10 @@ function JogadorView() {
       setLocalState(CONNECTION_STATES.CONNECTING);
       setErrorMessage(null);
 
-      await startPlayerSession(roomIdInput.trim(), selectedCharacter, {
+      // Preparar resumo do personagem para envio
+      const characterSummary = getCharacterSummary(selectedCharacter);
+      
+      await startPlayerSession(roomIdInput.trim(), characterSummary, {
         onConnected: handleConnected,
         onDisconnected: handleDisconnected,
         onMessage: handleMessage,
