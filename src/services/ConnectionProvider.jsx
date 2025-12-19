@@ -26,6 +26,11 @@ import {
   deserializeFromQR,
   serializeForQR,
 } from './webrtcSession';
+import { HostConnection } from '../webrtc/HostConnection';
+import { PeerConnection } from '../webrtc/PeerConnection';
+import { useSignaling } from '../hooks/useSignaling';
+import { createRoom, joinRoom, getParticipants, getSignals, sendHeartbeat } from '../api/signaling';
+import { useRoom } from '../context/RoomContext';
 
 // Contexto da conexão
 const ConnectionContext = createContext(null);
@@ -71,6 +76,13 @@ export function ConnectionProvider({ children }) {
   // === Refs (não disparam re-renders) ===
   const sessionRef = useRef(null); // Sessão WebRTC ativa
   const callbacksRef = useRef({}); // Callbacks registrados pela View
+  const hostConnectionRef = useRef(null); // HostConnection instance
+  const peerConnectionRef = useRef(null); // PeerConnection instance
+  const knownPeersRef = useRef(new Set()); // Para detectar novos peers
+  const characterInfoRef = useRef(null); // Para armazenar info do personagem do player
+
+  // === Room Context ===
+  const { setRole, setRoomId, setApiToken, deviceId } = useRoom();
 
   /**
    * Limpa o estado da sessão atual
@@ -92,14 +104,40 @@ export function ConnectionProvider({ children }) {
   const endSession = useCallback(() => {
     if (sessionRef.current) {
       try {
+        if (sessionRef.current.pollInterval) {
+          clearInterval(sessionRef.current.pollInterval);
+        }
+        if (sessionRef.current.heartbeatInterval) {
+          clearInterval(sessionRef.current.heartbeatInterval);
+        }
         sessionRef.current.close();
       } catch (error) {
         console.error('[ConnectionProvider] Erro ao fechar sessão:', error);
       }
       sessionRef.current = null;
     }
+    if (hostConnectionRef.current) {
+      hostConnectionRef.current.close();
+      hostConnectionRef.current = null;
+    }
+    if (peerConnectionRef.current) {
+      peerConnectionRef.current.close();
+      peerConnectionRef.current = null;
+    }
+
+    // Limpar intervals
+    if (sessionRef.current?.pollInterval) {
+      clearInterval(sessionRef.current.pollInterval);
+    }
+    if (sessionRef.current?.heartbeatInterval) {
+      clearInterval(sessionRef.current.heartbeatInterval);
+    }
+
     clearSessionState();
-  }, [clearSessionState]);
+    setRole(null);
+    setRoomId(null);
+    setApiToken(null);
+  }, [clearSessionState, setRole, setRoomId, setApiToken]);
 
   /**
    * Cleanup quando o Provider desmonta (app fecha/refresh)
@@ -265,22 +303,75 @@ export function ConnectionProvider({ children }) {
     setErrorMessage(null);
 
     try {
-      const session = await createHostSession({
-        onPlayerConnected: handlePlayerConnected,
-        onPlayerDisconnected: handlePlayerDisconnected,
-        onMessage: handleHostMessage,
-        onError: handleHostError,
-        onIceRestart: handleIceRestart,
+      // Criar sala via API
+      const { room_id, token } = await createRoom(deviceId);
+      setRoomId(room_id);
+      setApiToken(token);
+      setRole('host');
+
+      // Criar HostConnection
+      const hostConn = new HostConnection(room_id, deviceId, (state) => {
+        // Mapear estados
+        const statusMap = {
+          DISCONNECTED: SESSION_STATUS.DISCONNECTED,
+          SIGNALING: SESSION_STATUS.ACTIVE,
+          CONNECTING: SESSION_STATUS.CONNECTED, // Ajustar
+          CONNECTED: SESSION_STATUS.CONNECTED,
+          FAILED: SESSION_STATUS.ERROR,
+        };
+        setStatus(statusMap[state] || SESSION_STATUS.IDLE);
+      }, (peerId, message) => {
+        callbacksRef.current.onMessage?.(peerId, message);
       });
 
-      sessionRef.current = session;
-      // Não há mais qrData inicial - convites são criados sob demanda
+      hostConnectionRef.current = hostConn;
+      sessionRef.current = hostConn; // Para compatibilidade
+
       setStatus(SESSION_STATUS.ACTIVE);
       setPlayers([]);
-      setPendingInvites([]);
-      setRestartOffers({});
+      knownPeersRef.current = new Set();
 
-      console.log('[ConnectionProvider] Sessão Host iniciada:', session.sessionId);
+      // Iniciar polling de participantes e sinais
+      const poll = async () => {
+        try {
+          const participants = await getParticipants(room_id, deviceId);
+          for (const participant of participants) {
+            const peerId = participant.device_id;
+            if (!knownPeersRef.current.has(peerId)) {
+              knownPeersRef.current.add(peerId);
+              await hostConn.addPeer(peerId);
+              setPlayers(prev => [...prev, { playerId: peerId, status: 'connecting' }]);
+            }
+          }
+
+          const signals = await getSignals(room_id, deviceId);
+          for (const signal of signals) {
+            if (signal.type === 'answer') {
+              await hostConn.handleAnswer(signal.from, signal.payload);
+            } else if (signal.type === 'ice') {
+              await hostConn.handleIce(signal.from, signal.payload.candidate);
+            }
+          }
+        } catch (error) {
+          console.error('Erro no polling:', error);
+        }
+      };
+
+      // Polling a cada 2s
+      const pollInterval = setInterval(poll, 2000);
+      sessionRef.current.pollInterval = pollInterval; // Armazenar para limpar
+
+      // Heartbeat a cada 10s
+      const heartbeatInterval = setInterval(async () => {
+        try {
+          await sendHeartbeat(room_id, deviceId);
+        } catch (error) {
+          console.error('Erro no heartbeat:', error);
+        }
+      }, 10000);
+      sessionRef.current.heartbeatInterval = heartbeatInterval; // Armazenar para limpar
+
+      console.log('[ConnectionProvider] Sessão Host iniciada:', room_id);
 
     } catch (error) {
       console.error('[ConnectionProvider] Erro ao criar sessão Host:', error);
@@ -288,7 +379,7 @@ export function ConnectionProvider({ children }) {
       setStatus(SESSION_STATUS.ERROR);
       throw error;
     }
-  }, [endSession, handlePlayerConnected, handlePlayerDisconnected, handleHostMessage, handleHostError, handleIceRestart]);
+  }, [deviceId, setRoomId, setApiToken, setRole]);
 
   /**
    * Inicia sessão como Jogador
@@ -298,31 +389,7 @@ export function ConnectionProvider({ children }) {
    * @param {Object} callbacks - Callbacks para eventos
    * @returns {Promise<void>}
    */
-  const startPlayerSession = useCallback(async (offerQR, characterInfo, callbacks = {}) => {
-    // Se já existe sessão de player e handleOffer está disponível, usar para reconexão
-    if (sessionRef.current?.handleOffer && sessionType === SESSION_TYPES.PLAYER) {
-      try {
-        const offerData = deserializeFromQR(offerQR);
-        if (!offerData || !offerData.offer) {
-          throw new Error('QR Code inválido');
-        }
-
-        const { answerQR: newAnswerQR } = await sessionRef.current.handleOffer(
-          offerData.offer,
-          { reason: offerData.reason }
-        );
-
-        setAnswerQR(newAnswerQR);
-        setStatus(SESSION_STATUS.CREATING);
-        
-        console.log('[ConnectionProvider] Reconexão de Player processada');
-        return;
-      } catch (error) {
-        console.error('[ConnectionProvider] Erro ao processar reconexão:', error);
-        // Continua para criar nova sessão
-      }
-    }
-
+  const startPlayerSession = useCallback(async (roomId, characterInfo, callbacks = {}) => {
     // Encerra sessão anterior se existir
     if (sessionRef.current) {
       endSession();
@@ -330,33 +397,86 @@ export function ConnectionProvider({ children }) {
 
     // Registra callbacks
     callbacksRef.current = callbacks;
+    characterInfoRef.current = characterInfo;
 
     setSessionType(SESSION_TYPES.PLAYER);
     setStatus(SESSION_STATUS.CREATING);
     setErrorMessage(null);
 
     try {
-      const session = await createPlayerSession(offerQR, characterInfo, {
-        onConnected: handlePlayerConnectedEvent,
-        onDisconnected: handlePlayerDisconnectedEvent,
-        onMessage: handlePlayerMessage,
-        onError: handlePlayerError,
-        onIceRestartRequired: handleIceRestartRequired,
+      // Entrar na sala via API
+      const { token, host_id } = await joinRoom(roomId, deviceId);
+      setRoomId(roomId);
+      setApiToken(token);
+      setRole('peer');
+
+      // Criar PeerConnection
+      const peerConn = new PeerConnection(roomId, deviceId, (state) => {
+        const statusMap = {
+          DISCONNECTED: SESSION_STATUS.DISCONNECTED,
+          SIGNALING: SESSION_STATUS.ACTIVE,
+          CONNECTING: SESSION_STATUS.CONNECTED,
+          CONNECTED: SESSION_STATUS.CONNECTED,
+          FAILED: SESSION_STATUS.ERROR,
+        };
+        setStatus(statusMap[state] || SESSION_STATUS.IDLE);
+
+        // Quando conectar, enviar hello com dados do personagem
+        if (state === 'CONNECTED' && characterInfoRef.current) {
+          peerConn.sendMessage({
+            type: 'hello',
+            characterInfo: characterInfoRef.current,
+            timestamp: Date.now(),
+          });
+        }
+      }, (message) => {
+        callbacksRef.current.onMessage?.(message);
       });
 
-      sessionRef.current = session;
-      setAnswerQR(session.answerQR);
-      setStatus(SESSION_STATUS.CREATING); // Aguardando Mestre escanear
+      peerConnectionRef.current = peerConn;
+      sessionRef.current = peerConn;
 
-      console.log('[ConnectionProvider] Sessão Player criada:', session.sessionId);
+      setStatus(SESSION_STATUS.ACTIVE);
+
+      // Iniciar polling de signals
+      const pollSignals = async () => {
+        try {
+          const signals = await getSignals(roomId, deviceId);
+          for (const signal of signals) {
+            if (signal.type === 'offer') {
+              await peerConn.handleOffer(signal.payload);
+            } else if (signal.type === 'ice') {
+              await peerConn.handleIce(signal.payload);
+            }
+          }
+        } catch (error) {
+          console.error('Erro no polling de signals:', error);
+        }
+      };
+
+      // Polling a cada 2s
+      const pollInterval = setInterval(pollSignals, 2000);
+      sessionRef.current.pollInterval = pollInterval;
+
+      // Heartbeat a cada 10s
+      const heartbeatInterval = setInterval(async () => {
+        try {
+          await sendHeartbeat(roomId, deviceId);
+        } catch (error) {
+          console.error('Erro no heartbeat:', error);
+        }
+      }, 10000);
+      sessionRef.current.heartbeatInterval = heartbeatInterval;
+
+      console.log('[ConnectionProvider] Sessão Player iniciada:', roomId);
 
     } catch (error) {
       console.error('[ConnectionProvider] Erro ao criar sessão Player:', error);
-      setErrorMessage(error.message || 'Erro ao conectar');
+      setErrorMessage(error.message || 'Erro ao entrar na sessão');
       setStatus(SESSION_STATUS.ERROR);
       throw error;
     }
-  }, [endSession, sessionType, handlePlayerConnectedEvent, handlePlayerDisconnectedEvent, handlePlayerMessage, handlePlayerError, handleIceRestartRequired]);
+  }, [deviceId, setRoomId, setApiToken, setRole]);
 
   /**
    * Adiciona answer de um jogador (Mestre)
@@ -465,7 +585,12 @@ export function ConnectionProvider({ children }) {
       console.warn('[ConnectionProvider] Sessão de Player não ativa');
       return false;
     }
-    return sessionRef.current.sendCharacterUpdate(data);
+    console.log('[ConnectionProvider] Enviando atualização de personagem:', data);
+    return sessionRef.current.sendMessage({
+      type: 'characterUpdate',
+      data,
+      timestamp: Date.now(),
+    });
   }, [sessionType]);
 
   /**
@@ -476,7 +601,11 @@ export function ConnectionProvider({ children }) {
       console.warn('[ConnectionProvider] Sessão de Player não ativa');
       return false;
     }
-    return sessionRef.current.sendDiceRoll(rollData);
+    return sessionRef.current.sendMessage({
+      type: 'diceRoll',
+      ...rollData,
+      timestamp: Date.now(),
+    });
   }, [sessionType]);
 
   /**

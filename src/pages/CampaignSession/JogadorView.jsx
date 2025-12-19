@@ -1,19 +1,16 @@
 /**
  * JogadorView - Tela do Jogador para conectar na sessão do Mestre
  * 
- * Fluxo (v2 - Convites Individuais):
+ * Fluxo (HTTP + WebRTC):
  * 1. Jogador seleciona personagem que usará na sessão
- * 2. Jogador recebe código do Mestre (via WhatsApp, etc.)
- * 3. Jogador cola o código do convite
- * 4. Sistema gera código de resposta
- * 5. Jogador copia e envia resposta para o Mestre
- * 6. Conexão estabelecida, jogador envia dados do personagem
- * 7. Jogador pode enviar updates e rolagens em tempo real
+ * 2. Digita o ID da sala fornecido pelo Mestre
+ * 3. Conecta via HTTP e WebRTC automaticamente
+ * 4. Envia dados do personagem e rolagens em tempo real
  * 
  * Arquitetura:
- * - Cada jogador tem sua própria conexão RTCPeerConnection
- * - Sem QR Code (SDP muito grande) - usar apenas cópia/cola de texto
- * - Conexão gerenciada pelo ConnectionProvider
+ * - Sinalização via HTTP polling com backend Python
+ * - WebRTC P2P para sincronização de estado
+ * - Peer conecta ao Host
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
@@ -29,11 +26,10 @@ import { loadCharacters, loadSettings } from '../../services';
 import { calculateMaxHp, calculateMaxMp } from '../../models';
 import './CampaignSession.css';
 
-// Estados da conexão (mapeia para SESSION_STATUS do Provider)
+// Estados da conexão
 const CONNECTION_STATES = {
-  SELECTING: 'selecting', // Estado local inicial antes de conectar
-  GENERATING: SESSION_STATUS.CREATING,
-  WAITING: 'waiting',     // Após gerar answer, aguardando Mestre
+  SELECTING: 'selecting', // Selecionando personagem e digitando roomId
+  CONNECTING: SESSION_STATUS.CREATING,
   CONNECTED: SESSION_STATUS.CONNECTED,
   DISCONNECTED: SESSION_STATUS.DISCONNECTED,
   ERROR: SESSION_STATUS.ERROR,
@@ -45,18 +41,16 @@ function JogadorView() {
   // === Conexão via Context (Provider) ===
   const {
     status,
-    answerQR,
     errorMessage: contextErrorMessage,
     isPlayer,
     startPlayerSession,
     endSession,
     sendCharacterUpdate,
-    // sendDiceRoll disponível via contexto para uso futuro
     updateCallbacks,
   } = useConnection();
   
   // === Estado local de UI ===
-  // Estado da conexão (combinação de estado local + contexto)
+  // Estado da conexão
   const [localState, setLocalState] = useState(CONNECTION_STATES.SELECTING);
   const [errorMessage, setErrorMessage] = useState(null);
   
@@ -64,9 +58,8 @@ function JogadorView() {
   const [characters, setCharacters] = useState([]);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
   
-  // Entrada do código do Mestre
-  const [showCodeInput, setShowCodeInput] = useState(false);
-  const [codeInputValue, setCodeInputValue] = useState('');
+  // Entrada do ID da sala
+  const [roomIdInput, setRoomIdInput] = useState('');
   
   // Toast
   const [toast, setToast] = useState(null);
@@ -74,16 +67,12 @@ function JogadorView() {
   // Configurações
   const [settings, setSettings] = useState({ soundEnabled: true, vibrationEnabled: true });
 
-  // Deriva o estado de conexão combinando estado local com contexto
+  // Deriva o estado de conexão
   const connectionState = (() => {
-    // Se já está conectado no contexto, usar esse estado
     if (status === SESSION_STATUS.CONNECTED) return CONNECTION_STATES.CONNECTED;
     if (status === SESSION_STATUS.DISCONNECTED && isPlayer) return CONNECTION_STATES.DISCONNECTED;
     if (status === SESSION_STATUS.ERROR) return CONNECTION_STATES.ERROR;
-    // Se está criando no contexto e answerQR já existe, é WAITING
-    if (status === SESSION_STATUS.CREATING && answerQR) return CONNECTION_STATES.WAITING;
-    if (status === SESSION_STATUS.CREATING) return CONNECTION_STATES.GENERATING;
-    // Caso contrário, usa estado local
+    if (status === SESSION_STATUS.CREATING) return CONNECTION_STATES.CONNECTING;
     return localState;
   })();
 
@@ -183,102 +172,44 @@ function JogadorView() {
   }, [updateCallbacks, handleConnected, handleDisconnected, handleMessage, handleError, handleIceRestartRequired]);
 
   /**
-   * Processa o código do Mestre e gera answer (via Provider)
+   * Conecta à sessão do Mestre
    */
-  const processOfferQR = async (offerQR) => {
+  const handleConnect = async () => {
     if (!selectedCharacter) {
       setToast({ message: 'Selecione um personagem primeiro', type: 'error' });
       return;
     }
 
-    if (!isWebRTCSupported()) {
-      setErrorMessage('WebRTC não suportado neste navegador');
-      setLocalState(CONNECTION_STATES.ERROR);
+    if (!roomIdInput.trim()) {
+      setToast({ message: 'Digite o ID da sala', type: 'error' });
       return;
     }
 
-    // Fecha input e limpa valor
-    setShowCodeInput(false);
-    setCodeInputValue('');
-
-    setLocalState(CONNECTION_STATES.GENERATING);
-    setErrorMessage(null);
+    if (!isWebRTCSupported()) {
+      setToast({ message: 'WebRTC não suportado neste navegador', type: 'error' });
+      return;
+    }
 
     try {
-      const characterInfo = getCharacterSummary(selectedCharacter);
-      
-      await startPlayerSession(offerQR, characterInfo, {
+      setLocalState(CONNECTION_STATES.CONNECTING);
+      setErrorMessage(null);
+
+      await startPlayerSession(roomIdInput.trim(), selectedCharacter, {
         onConnected: handleConnected,
         onDisconnected: handleDisconnected,
         onMessage: handleMessage,
         onError: handleError,
-        onIceRestartRequired: handleIceRestartRequired,
       });
 
-      // O estado será atualizado pelo contexto automaticamente
       playFeedback('success');
-      setToast({ message: 'Código gerado! Envie para o Mestre.', type: 'info' });
-      
+      setToast({ message: 'Conectando à sessão...', type: 'success' });
+
     } catch (error) {
-      console.error('[JogadorView] Erro ao processar offer:', error);
-      setErrorMessage(error.message || 'Erro ao conectar');
+      console.error('[JogadorView] Erro ao conectar:', error);
       setLocalState(CONNECTION_STATES.ERROR);
+      setErrorMessage(error.message || 'Erro ao conectar');
+      setToast({ message: error.message || 'Erro ao conectar', type: 'error' });
     }
-  };
-
-  /**
-   * Envia atualização de status do personagem (via Provider)
-   */
-  const sendStatusUpdate = () => {
-    if (!selectedCharacter) return;
-    
-    const summary = getCharacterSummary(selectedCharacter);
-    sendCharacterUpdate(summary);
-    
-    setToast({ message: 'Status enviado!', type: 'success' });
-  };
-
-  /**
-   * Copia código de resposta para clipboard
-   */
-  // Fallback para cópia do answer
-  const [showAnswerCode, setShowAnswerCode] = useState(false);
-
-  const copyAnswerToClipboard = async () => {
-    if (!answerQR) return;
-    const text = typeof answerQR === 'string' ? answerQR : JSON.stringify(answerQR);
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        setToast({ message: 'Código copiado! Envie para o Mestre.', type: 'success' });
-        return;
-      } catch (err) {
-        console.warn('[JogadorView] clipboard.writeText falhou:', err);
-      }
-    }
-
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'absolute';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      if (ok) {
-        setToast({ message: 'Código copiado (fallback)!', type: 'success' });
-        return;
-      }
-    } catch (err) {
-      console.warn('[JogadorView] fallback copy falhou:', err);
-    }
-
-    // Se não conseguiu copiar, mostra modal com código
-    setShowAnswerCode(true);
-    setToast({ message: 'Código exibido para cópia manual.', type: 'info' });
   };
 
   /**
@@ -287,17 +218,6 @@ function JogadorView() {
   const closeConnection = () => {
     endSession();
     navigate(-1);
-  };
-
-  /**
-   * Reinicia o fluxo de conexão (via Provider)
-   */
-  const restartConnection = () => {
-    endSession();
-    setLocalState(CONNECTION_STATES.SELECTING);
-    setErrorMessage(null);
-    setShowCodeInput(false);
-    setCodeInputValue('');
   };
 
   // Nota: cleanup não é mais necessário aqui - o Provider gerencia o ciclo de vida
@@ -365,14 +285,6 @@ function JogadorView() {
             <div className="status-value mp">{currentMp}/{maxMp}</div>
           </div>
         </div>
-        <div className="action-buttons">
-          <Button 
-            variant="secondary"
-            onClick={sendStatusUpdate}
-          >
-            📤 Enviar Status
-          </Button>
-        </div>
       </section>
     );
   };
@@ -382,17 +294,6 @@ function JogadorView() {
       <Header 
         title="Entrar na Sessão" 
         showBack
-        rightAction={
-          connectionState === CONNECTION_STATES.CONNECTED && (
-            <button 
-              className="btn btn-ghost btn-sm"
-              onClick={restartConnection}
-              title="Reconectar"
-            >
-              🔄
-            </button>
-          )
-        }
       />
 
       <main className="page-content">
@@ -413,20 +314,30 @@ function JogadorView() {
 
             {selectedCharacter && (
               <>
-                <section className="qr-section">
-                  <h3>📱 Conectar ao Mestre</h3>
-                  <p className="qr-subtitle">
-                    Cole o código de convite que o Mestre enviou
+                <section className="room-id-section">
+                  <h3>🏰 Entrar na Sessão</h3>
+                  <p className="room-id-subtitle">
+                    Digite o ID da sala fornecido pelo Mestre
                   </p>
                   
+                  <div className="input-group">
+                    <input
+                      type="text"
+                      placeholder="ID da sala"
+                      value={roomIdInput}
+                      onChange={(e) => setRoomIdInput(e.target.value)}
+                      className="room-id-input"
+                    />
+                  </div>
+
                   <div className="action-buttons">
                     <Button 
                       variant="primary"
                       size="large"
                       fullWidth
-                      onClick={() => setShowCodeInput(true)}
+                      onClick={handleConnect}
                     >
-                      📝 Inserir Código do Mestre
+                      ⚔️ Entrar na Sessão
                     </Button>
                   </div>
 
@@ -435,74 +346,14 @@ function JogadorView() {
                 <section className="info-section">
                   <div className="info-card">
                     <h4>💡 Como conectar</h4>
-                    <p>1. Peça para o Mestre gerar um convite</p>
-                    <p>2. O Mestre envia o código (WhatsApp, etc.)</p>
-                    <p>3. Cole o código aqui e gere sua resposta</p>
-                    <p>4. Envie sua resposta para o Mestre</p>
-                    <p>5. Pronto! Você está na sessão</p>
+                    <p>1. Peça o ID da sala ao Mestre</p>
+                    <p>2. Digite o ID aqui</p>
+                    <p>3. Clique em "Entrar na Sessão"</p>
+                    <p>4. Pronto! Você está na sessão</p>
                   </div>
                 </section>
               </>
             )}
-          </>
-        )}
-
-        {/* Estado: Gerando answer */}
-        {connectionState === CONNECTION_STATES.GENERATING && (
-          <div className="loading-state">
-            <div className="loading-spinner"></div>
-            <p>Gerando resposta...</p>
-          </div>
-        )}
-
-        {/* Estado: Aguardando Mestre processar resposta */}
-        {connectionState === CONNECTION_STATES.WAITING && (
-          <>
-            <section className="qr-section">
-              <h3>📤 Envie sua Resposta</h3>
-              <p className="qr-subtitle">
-                Copie o código abaixo e envie para o Mestre
-              </p>
-              
-              <div className="code-display">
-                <textarea
-                  readOnly
-                  value={answerQR || 'Gerando...'}
-                  style={{ 
-                    width: '100%', 
-                    minHeight: 100, 
-                    fontFamily: 'monospace', 
-                    fontSize: '0.7rem',
-                    wordBreak: 'break-all'
-                  }}
-                  onClick={(e) => e.target.select()}
-                />
-              </div>
-              
-              <div className="qr-actions" style={{ marginTop: '1rem' }}>
-                <Button 
-                  variant="primary"
-                  fullWidth
-                  onClick={copyAnswerToClipboard}
-                >
-                  📋 Copiar Código de Resposta
-                </Button>
-              </div>
-            </section>
-
-            <div className="connection-status connecting">
-              <span className="status-dot"></span>
-              <span>Aguardando Mestre processar resposta...</span>
-            </div>
-
-            <div className="action-buttons">
-              <Button 
-                variant="secondary"
-                onClick={restartConnection}
-              >
-                ← Voltar e Tentar Novamente
-              </Button>
-            </div>
           </>
         )}
 
@@ -556,12 +407,6 @@ function JogadorView() {
               </p>
               <div className="action-buttons">
                 <Button 
-                  variant="primary"
-                  onClick={restartConnection}
-                >
-                  🔄 Reconectar
-                </Button>
-                <Button 
                   variant="secondary"
                   onClick={() => navigate(-1)}
                 >
@@ -580,7 +425,7 @@ function JogadorView() {
             <div className="action-buttons">
               <Button 
                 variant="primary"
-                onClick={restartConnection}
+                onClick={() => setLocalState(CONNECTION_STATES.SELECTING)}
               >
                 🔄 Tentar Novamente
               </Button>
@@ -603,95 +448,6 @@ function JogadorView() {
           duration={3000}
           onClose={() => setToast(null)}
         />
-      )}
-
-      {/* Modal para inserir código do Mestre */}
-      {showCodeInput && (
-        <Modal
-          isOpen={showCodeInput}
-          title="📝 Código do Mestre"
-          onClose={() => {
-            setShowCodeInput(false);
-            setCodeInputValue('');
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-              Cole o código de convite que o Mestre enviou:
-            </p>
-            <textarea
-              autoFocus
-              placeholder="Cole aqui o código do convite..."
-              value={codeInputValue}
-              onChange={(e) => setCodeInputValue(e.target.value)}
-              style={{ 
-                width: '100%', 
-                minHeight: 100, 
-                fontFamily: 'monospace', 
-                fontSize: '0.75rem'
-              }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  if (codeInputValue.trim()) {
-                    processOfferQR(codeInputValue.trim());
-                  }
-                }}
-                disabled={!codeInputValue.trim()}
-              >
-                Conectar
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={() => {
-                  setShowCodeInput(false);
-                  setCodeInputValue('');
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal com código de resposta para cópia */}
-      {showAnswerCode && answerQR && (
-        <Modal
-          isOpen={showAnswerCode}
-          title="📤 Seu Código de Resposta"
-          onClose={() => setShowAnswerCode(false)}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-              Selecione e copie o código abaixo, depois envie para o Mestre:
-            </p>
-            <textarea
-              readOnly
-              value={answerQR}
-              style={{ 
-                width: '100%', 
-                minHeight: 120, 
-                fontFamily: 'monospace',
-                fontSize: '0.7rem'
-              }}
-              onClick={(e) => e.target.select()}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button
-                variant="primary"
-                onClick={copyAnswerToClipboard}
-              >
-                📋 Copiar
-              </Button>
-              <Button variant="secondary" onClick={() => setShowAnswerCode(false)}>
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </Modal>
       )}
     </div>
   );

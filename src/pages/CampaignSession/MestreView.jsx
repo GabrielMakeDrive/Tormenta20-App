@@ -1,20 +1,16 @@
 /**
  * MestreView - Tela do Mestre para gerenciar sessão de campanha
  * 
- * Fluxo (v2 - Convites Individuais):
- * 1. Usuário inicia sessão clicando em "Iniciar Sessão"
- * 2. Mestre clica "Gerar Convite" para cada jogador
- * 3. Cada convite gera um código único (copia/cola, sem QR Code)
- * 4. Jogador cola o código e gera resposta
- * 5. Mestre cola a resposta do jogador
- * 6. Conexão estabelecida, jogador aparece na lista
- * 7. Mestre recebe updates de status e rolagens em tempo real
+ * Fluxo (HTTP + WebRTC):
+ * 1. Mestre inicia sessão, cria sala via backend
+ * 2. Exibe ID da sala para compartilhar com jogadores
+ * 3. Polling detecta novos jogadores e conecta automaticamente via WebRTC
+ * 4. Mestre gerencia jogadores conectados e recebe mensagens em tempo real
  * 
  * Arquitetura:
- * - Cada jogador tem sua própria conexão RTCPeerConnection
- * - Convites pendentes ficam em lista até receberem answer
- * - Sem QR Code (SDP muito grande para leitura confiável)
- * - Usa apenas cópia/cola de texto
+ * - Sinalização via HTTP polling com backend Python
+ * - WebRTC P2P para sincronização de estado
+ * - Host gerencia múltiplas conexões
  */
 
 import React, { useState, useCallback, useEffect } from 'react';
@@ -23,10 +19,10 @@ import { Header, Button, Toast, Modal } from '../../components';
 import { 
   useConnection,
   SESSION_STATUS,
-  deserializeFromQR,
   isWebRTCSupported,
   isAndroidPlatform,
 } from '../../services';
+import { useRoom } from '../../context/RoomContext';
 import { loadSettings } from '../../services';
 import './CampaignSession.css';
 
@@ -41,20 +37,17 @@ const SESSION_STATES = {
 function MestreView() {
   const navigate = useNavigate();
   
+  // === Room Context ===
+  const { roomId } = useRoom();
+  
   // === Conexão via Context (Provider) ===
   const {
     status,
     players: contextPlayers,
-    pendingInvites,
     errorMessage: contextErrorMessage,
-    restartOffers: contextRestartOffers,
     isActive,
     startHostSession,
     endSession,
-    createInvite,
-    cancelInvite,
-    addAnswer,
-    requestIceRestart,
     updateCallbacks,
   } = useConnection();
 
@@ -67,22 +60,11 @@ function MestreView() {
   // Erro (do contexto)
   const errorMessage = contextErrorMessage;
   
-  // Restart offers (do contexto)
-  const restartOffers = contextRestartOffers;
-  
   // === Estado local de UI ===
   const [rolls, setRolls] = useState([]);
   
-  // Input manual de resposta
-  const [showAnswerInput, setShowAnswerInput] = useState(false);
-  const [answerInputValue, setAnswerInputValue] = useState('');
-  
   // Toast
   const [toast, setToast] = useState(null);
-  // Modal de código do convite
-  const [showInviteCode, setShowInviteCode] = useState(null);
-  // Texto para cópia manual de restart
-  const [restartManualCopyText, setRestartManualCopyText] = useState(null);
   
   // Configurações
   const [settings, setSettings] = useState({ soundEnabled: true, vibrationEnabled: true });
@@ -117,21 +99,6 @@ function MestreView() {
       type: 'success' 
     });
   }, [playFeedback]);
-
-  const handleIceRestart = useCallback((playerId, payload) => {
-    const playerName = players.find(p => p.playerId === playerId)?.info?.characterName || 'Jogador';
-    setToast({ message: `${playerName} precisa escanear o novo QR`, type: 'info' });
-  }, [players]);
-
-  const handleManualIceRestart = useCallback(async (playerId) => {
-    setToast({ message: 'Solicitando reinício de ICE...', type: 'info' });
-    try {
-      await requestIceRestart(playerId, 'manual');
-    } catch (error) {
-      console.error('[MestreView] Falha ao solicitar reinício:', error);
-      setToast({ message: 'Não foi possível reiniciar ICE', type: 'error' });
-    }
-  }, [requestIceRestart]);
 
   const handlePlayerDisconnected = useCallback((playerId, playerInfo) => {
     console.log('[MestreView] Jogador desconectado:', playerId);
@@ -178,9 +145,8 @@ function MestreView() {
       onPlayerDisconnected: handlePlayerDisconnected,
       onMessage: handleMessage,
       onError: handleError,
-      onIceRestart: handleIceRestart,
     });
-  }, [updateCallbacks, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleError, handleIceRestart]);
+  }, [updateCallbacks, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleError]);
 
   /**
    * Inicia uma nova sessão como Mestre (via Provider)
@@ -197,14 +163,12 @@ function MestreView() {
         onPlayerDisconnected: handlePlayerDisconnected,
         onMessage: handleMessage,
         onError: handleError,
-        onIceRestart: handleIceRestart,
       });
 
       setRolls([]);
-      setRestartManualCopyText(null);
       
       playFeedback('success');
-      setToast({ message: 'Sessão iniciada! Crie convites para os jogadores.', type: 'success' });
+      setToast({ message: 'Sessão iniciada! Compartilhe o ID da sala com os jogadores.', type: 'success' });
       
     } catch (error) {
       console.error('[MestreView] Erro ao criar sessão:', error);
@@ -215,122 +179,13 @@ function MestreView() {
   /**
    * Cria um novo convite para um jogador
    */
-  const handleCreateInvite = async () => {
-    try {
-      const invite = await createInvite();
-      setShowInviteCode(invite);
-      playFeedback('success');
-      setToast({ message: 'Convite criado! Envie o código para o jogador.', type: 'success' });
-    } catch (error) {
-      console.error('[MestreView] Erro ao criar convite:', error);
-      setToast({ message: error.message || 'Erro ao criar convite', type: 'error' });
-    }
-  };
-
-  /**
-   * Copia código do convite para clipboard
-   */
-  const copyInviteToClipboard = async (code) => {
-    if (!code) return;
-
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(code);
-        setToast({ message: 'Código copiado!', type: 'success' });
-        return;
-      } catch (err) {
-        console.warn('[MestreView] clipboard.writeText falhou:', err);
-      }
-    }
-
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = code;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'absolute';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      if (ok) {
-        setToast({ message: 'Código copiado!', type: 'success' });
-        return;
-      }
-    } catch (err) {
-      console.warn('[MestreView] fallback copy falhou:', err);
-    }
-
-    setToast({ message: 'Selecione e copie o código manualmente', type: 'info' });
-  };
-
-  /**
-   * Processa resposta (answer) de um jogador
-   */
-  const processAnswer = async () => {
-    if (!isActive) {
-      setToast({ message: 'Sessão não está ativa', type: 'error' });
-      return;
-    }
-
-    if (!answerInputValue.trim()) {
-      setToast({ message: 'Cole o código de resposta do jogador', type: 'error' });
-      return;
-    }
-
-    try {
-      const answerData = deserializeFromQR(answerInputValue.trim());
-      
-      if (!answerData || !answerData.answer || !answerData.playerId) {
-        throw new Error('Código inválido');
-      }
-
-      await addAnswer(answerData.playerId, answerData.answer);
-      
-      // Limpa input e fecha modal
-      setAnswerInputValue('');
-      setShowAnswerInput(false);
-      
-      playFeedback('success');
-      setToast({ message: 'Conectando com jogador...', type: 'info' });
-      
-    } catch (error) {
-      console.error('[MestreView] Erro ao processar answer:', error);
-      setToast({ message: error.message || 'Erro ao processar resposta', type: 'error' });
-    }
-  };
-
-  /**
-   * Reinicia a sessão (fecha tudo e cria nova via Provider)
-   */
-  const restartSession = () => {
-    endSession();
-    setRolls([]);
-    setRestartManualCopyText(null);
-    setShowInviteCode(null);
-    setShowAnswerInput(false);
-    setAnswerInputValue('');
-    // Após endSession, status volta para IDLE automaticamente
-  };
-
-  /**
-   * Fecha sessão e volta (via Provider)
-   */
-  const closeSession = () => {
-    endSession();
-    setRestartManualCopyText(null);
-    navigate(-1);
-  };
-
-  // Nota: cleanup não é mais necessário aqui - o Provider gerencia o ciclo de vida
-
   const renderPlayersList = () => {
     if (players.length === 0) {
       return (
         <div className="empty-players">
           <div className="empty-icon">👥</div>
           <p>Nenhum jogador conectado</p>
-          <p className="text-muted">Crie convites e envie para os jogadores</p>
+          <p className="text-muted">Os jogadores se conectarão automaticamente</p>
         </div>
       );
     }
@@ -372,110 +227,9 @@ function MestreView() {
                 </div>
               )}
             </div>
-            {(player.status === 'connected' || player.status === 'reconnecting') && (
-              <div className="player-card-actions">
-                <Button
-                  variant="ghost"
-                  size="small"
-                  onClick={() => handleManualIceRestart(player.playerId)}
-                >
-                  🔁 Solicitar reinício
-                </Button>
-              </div>
-            )}
           </div>
         ))}
       </div>
-    );
-  };
-
-  /**
-   * Renderiza lista de convites pendentes
-   */
-  const renderPendingInvites = () => {
-    if (!pendingInvites || pendingInvites.length === 0) return null;
-
-    return (
-      <section className="invites-section">
-        <h4>📨 Convites Pendentes ({pendingInvites.length})</h4>
-        <div className="invites-list">
-          {pendingInvites.map(invite => (
-            <div key={invite.playerId} className="invite-card">
-              <div className="invite-info">
-                <span className="invite-id">Convite #{invite.playerId.slice(0, 8)}</span>
-                <span className="invite-time">
-                  {new Date(invite.createdAt).toLocaleTimeString()}
-                </span>
-              </div>
-              <div className="invite-actions">
-                <Button
-                  variant="primary"
-                  size="small"
-                  onClick={() => copyInviteToClipboard(invite.offerCode)}
-                >
-                  📋 Copiar Código
-                </Button>
-                <Button
-                  variant="secondary"
-                  size="small"
-                  onClick={() => setShowAnswerInput(true)}
-                >
-                  📝 Inserir Resposta
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="small"
-                  onClick={() => cancelInvite(invite.playerId)}
-                >
-                  ✕
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
-      </section>
-    );
-  };
-
-  const renderRestartOffersSection = () => {
-    const entries = Object.entries(restartOffers || {});
-    if (entries.length === 0) return null;
-
-    return (
-      <section className="restart-section">
-        <h4>🔁 Reinícios aguardando resposta</h4>
-        <div className="restart-list">
-          {entries.map(([playerId, data]) => {
-            const playerName = players.find(p => p.playerId === playerId)?.info?.characterName || 'Jogador';
-            return (
-              <div key={playerId} className="restart-card">
-                <div className="restart-header">
-                  <div>
-                    <strong>{playerName}</strong>
-                    <p>{data.reason || 'Reconexão solicitada'}</p>
-                  </div>
-                </div>
-                <div className="restart-actions">
-                  <Button
-                    variant="primary"
-                    size="small"
-                    onClick={() => copyInviteToClipboard(data.qr)}
-                  >
-                    📋 Copiar Código
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="small"
-                    onClick={() => setRestartManualCopyText({ text: data.qr, playerName })}
-                  >
-                    ✏️ Ver código
-                  </Button>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </section>
     );
   };
 
@@ -512,18 +266,7 @@ function MestreView() {
     <div className="page campaign-session-page">
       <Header 
         title="Sessão do Mestre" 
-        showBack 
-        rightAction={
-          sessionState === SESSION_STATES.ACTIVE && (
-            <button 
-              className="btn btn-ghost btn-sm"
-              onClick={restartSession}
-              title="Reiniciar sessão"
-            >
-              🔄
-            </button>
-          )
-        }
+        showBack
       />
 
       <main className="page-content">
@@ -558,10 +301,9 @@ function MestreView() {
               <div className="info-card">
                 <h4>💡 Como funciona</h4>
                 <p>1. Inicie a sessão</p>
-                <p>2. Clique "Gerar Convite" para cada jogador</p>
-                <p>3. Envie o código para o jogador (WhatsApp, etc.)</p>
-                <p>4. Cole a resposta do jogador</p>
-                <p>5. Pronto! Você verá os status em tempo real</p>
+                <p>2. Compartilhe o ID da sala com os jogadores</p>
+                <p>3. Os jogadores entram digitando o ID</p>
+                <p>4. Pronto! Você verá os status em tempo real</p>
               </div>
             </section>
           </>
@@ -578,48 +320,32 @@ function MestreView() {
         {/* Estado: Sessão ativa */}
         {sessionState === SESSION_STATES.ACTIVE && (
           <>
-            {/* Controles do Mestre */}
-            <section className="controls-section">
-              <h4>🎮 Gerenciar Jogadores</h4>
-              <div className="action-buttons">
-                <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                  <Button 
-                    variant="primary"
-                    fullWidth
-                    onClick={handleCreateInvite}
-                  >
-                    ➕ Gerar Convite
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    fullWidth
-                    onClick={() => setShowAnswerInput(true)}
-                  >
-                    📝 Inserir Resposta
-                  </Button>
-                  <Button 
-                    variant="danger"
-                    onClick={closeSession}
-                  >
-                    X
-                  </Button>
-                </div>
+            {/* ID da Sala */}
+            <section className="room-id-section">
+              <h4>🏰 Sala Criada</h4>
+              <div className="room-id-display">
+                <p>ID da Sala: <strong>{roomId}</strong></p>
+                <Button 
+                  variant="secondary" 
+                  size="small"
+                  onClick={() => navigator.clipboard.writeText(roomId)}
+                >
+                  📋 Copiar ID
+                </Button>
               </div>
+              <p className="room-id-info">
+                Compartilhe este ID com os jogadores para que eles possam entrar na sessão.
+              </p>
             </section>
-
-            {/* Convites pendentes */}
-            {renderPendingInvites()}
 
             {/* Lista de jogadores */}
             <section className="players-section">
               <h4>
-                <span>👥 Jogadores</span>
+                <span>👥 Jogadores Conectados</span>
                 <span className="player-count">{players.filter(p => p.status === 'connected').length}</span>
               </h4>
               {renderPlayersList()}
             </section>
-
-            {renderRestartOffersSection()}
 
             {/* Histórico de rolagens */}
             {renderRollsHistory()}
@@ -657,121 +383,6 @@ function MestreView() {
           duration={3000}
           onClose={() => setToast(null)}
         />
-      )}
-
-      {/* Modal para exibir código do convite */}
-      {showInviteCode && (
-        <Modal
-          isOpen={!!showInviteCode}
-          title="📨 Código do Convite"
-          onClose={() => setShowInviteCode(null)}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-              Envie este código para o jogador (WhatsApp, Telegram, etc.):
-            </p>
-            <textarea
-              readOnly
-              value={showInviteCode.offerCode}
-              style={{ 
-                width: '100%', 
-                minHeight: 100, 
-                fontFamily: 'monospace', 
-                fontSize: '0.75rem',
-                wordBreak: 'break-all'
-              }}
-              onClick={(e) => e.target.select()}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button
-                variant="primary"
-                onClick={() => copyInviteToClipboard(showInviteCode.offerCode)}
-              >
-                📋 Copiar
-              </Button>
-              <Button variant="secondary" onClick={() => setShowInviteCode(null)}>
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal para inserir resposta do jogador */}
-      {showAnswerInput && (
-        <Modal
-          isOpen={showAnswerInput}
-          title="📝 Resposta do Jogador"
-          onClose={() => {
-            setShowAnswerInput(false);
-            setAnswerInputValue('');
-          }}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <p style={{ margin: 0, color: 'var(--text-muted)' }}>
-              Cole o código de resposta que o jogador enviou:
-            </p>
-            <textarea
-              autoFocus
-              placeholder="Cole aqui o código de resposta do jogador..."
-              value={answerInputValue}
-              onChange={(e) => setAnswerInputValue(e.target.value)}
-              style={{
-                width: '100%', 
-                minHeight: 100, 
-                fontFamily: 'monospace', 
-                fontSize: '0.75rem'
-              }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button
-                variant="primary"
-                onClick={processAnswer}
-                disabled={!answerInputValue.trim()}
-              >
-                Conectar
-              </Button>
-              <Button 
-                variant="secondary" 
-                onClick={() => {
-                  setShowAnswerInput(false);
-                  setAnswerInputValue('');
-                }}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
-
-      {/* Modal para código de reinício */}
-      {restartManualCopyText && (
-        <Modal
-          isOpen={!!restartManualCopyText}
-          title={`Código de Reinício - ${restartManualCopyText.playerName || 'Jogador'}`}
-          onClose={() => setRestartManualCopyText(null)}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <textarea
-              readOnly
-              value={restartManualCopyText.text}
-              style={{ width: '100%', minHeight: 120, fontFamily: 'monospace' }}
-              onClick={(e) => e.target.select()}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button
-                variant="primary"
-                onClick={() => copyInviteToClipboard(restartManualCopyText.text)}
-              >
-                📋 Copiar
-              </Button>
-              <Button variant="secondary" onClick={() => setRestartManualCopyText(null)}>
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </Modal>
       )}
     </div>
   );
