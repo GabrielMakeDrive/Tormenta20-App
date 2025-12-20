@@ -173,6 +173,11 @@
   border-left-color: var(--primary-color);
 }
 
+.player-card.host-card {
+  border-left-color: var(--primary-color);
+  background-color: var(--primary-light);
+}
+
 .reconnect-reason {
   margin-top: 6px;
   font-size: 0.75rem;

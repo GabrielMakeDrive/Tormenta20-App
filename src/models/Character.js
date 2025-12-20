@@ -11,7 +11,7 @@
  * Os valores de atributos são tipicamente entre -5 e +5, sendo 0 o padrão.
  */
 import { v4 as uuidv4 } from 'uuid';
-import {RACES, CLASSES, SKILLS, HABILIDADES} from './T20Data.js';
+import { RACES, CLASSES, SKILLS, HABILIDADES } from './T20Data.js';
 export * from './T20Data.js';
 
 const DEFAULT_ATTRIBUTE_SCORE = 0;
@@ -252,7 +252,18 @@ export class Character {
     this.hp.max = derivedMaxHp;
     this.hp.current = Math.min(this.hp.current, derivedMaxHp);
     this.mp.max = derivedMaxMp;
+    this.mp.max = derivedMaxMp;
     this.mp.current = Math.min(this.mp.current, derivedMaxMp);
+  }
+
+  get className() {
+    const def = findClassDefinition(this.characterClass);
+    return def ? def.name : this.characterClass || 'Desconhecida';
+  }
+
+  get raceName() {
+    const def = findRaceDefinition(this.race);
+    return def ? def.name : this.race || 'Desconhecida';
   }
 
   toJSON() {
@@ -388,10 +399,10 @@ export const getHabilidadeById = (classId, habilidadeId) => {
  */
 export const checkPrerequisites = (character, prerequisites = []) => {
   if (!prerequisites || prerequisites.length === 0) return true;
-  
+
   return prerequisites.every(req => {
     if (typeof req === 'string') return true; // Ignora strings legadas
-    
+
     switch (req.type) {
       case 'attribute':
         const attrValue = getTotalAttributeValue(character, req.key);

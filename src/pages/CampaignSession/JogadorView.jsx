@@ -16,11 +16,11 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header, Button, Toast, Modal } from '../../components';
-import { 
+import {
   useConnection,
   SESSION_STATUS,
   isWebRTCSupported,
-  isAndroidPlatform 
+  isAndroidPlatform
 } from '../../services';
 import { loadCharacters, loadSettings } from '../../services';
 import { calculateMaxHp, calculateMaxMp } from '../../models';
@@ -37,7 +37,7 @@ const CONNECTION_STATES = {
 
 function JogadorView() {
   const navigate = useNavigate();
-  
+
   // === Conexão via Context (Provider) ===
   const {
     status,
@@ -48,22 +48,22 @@ function JogadorView() {
     sendCharacterUpdate,
     updateCallbacks,
   } = useConnection();
-  
+
   // === Estado local de UI ===
   // Estado da conexão
   const [localState, setLocalState] = useState(CONNECTION_STATES.SELECTING);
   const [errorMessage, setErrorMessage] = useState(null);
-  
+
   // Personagens e seleção
   const [characters, setCharacters] = useState([]);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
-  
+
   // Entrada do ID da sala
   const [roomIdInput, setRoomIdInput] = useState('');
-  
+
   // Toast
   const [toast, setToast] = useState(null);
-  
+
   // Configurações
   const [settings, setSettings] = useState({ soundEnabled: true, vibrationEnabled: true });
 
@@ -80,7 +80,7 @@ function JogadorView() {
   useEffect(() => {
     const loadedCharacters = loadCharacters();
     setCharacters(loadedCharacters);
-    
+
     // Seleciona favorito ou primeiro
     const favorite = loadedCharacters.find(c => c.isFavorite);
     if (favorite) {
@@ -88,7 +88,7 @@ function JogadorView() {
     } else if (loadedCharacters.length > 0) {
       setSelectedCharacter(loadedCharacters[0]);
     }
-    
+
     const loadedSettings = loadSettings();
     setSettings(loadedSettings);
   }, []);
@@ -110,22 +110,32 @@ function JogadorView() {
    */
   const getCharacterSummary = useCallback((character) => {
     if (!character) return null;
-    
-    const maxHp = calculateMaxHp(character);
-    const maxMp = calculateMaxMp(character);
-    
-    return {
-      characterId: character.id,
-      characterName: character.name,
-      characterIcon: character.icon || '👤',
-      characterClass: character.className,
-      characterRace: character.raceName,
-      characterLevel: character.level,
-      currentHp: character.currentHp ?? maxHp,
-      maxHp,
-      currentMp: character.currentMp ?? maxMp,
-      maxMp,
-    };
+
+    try {
+      const maxHp = calculateMaxHp(character);
+      const maxMp = calculateMaxMp(character);
+
+      return {
+        characterId: character.id,
+        characterName: character.name,
+        characterIcon: character.icon || '👤',
+        characterClass: character.className,
+        characterRace: character.raceName,
+        characterLevel: character.level,
+        currentHp: character.hp?.current ?? maxHp,
+        maxHp,
+        currentMp: character.mp?.current ?? maxMp,
+        maxMp,
+      };
+    } catch (err) {
+      console.error('[JogadorView] Erro ao extrair resumo:', err);
+      return {
+        characterId: character.id,
+        characterName: character.name,
+        characterIcon: character.icon,
+        characterLevel: character.level
+      };
+    }
   }, []);
 
   /**
@@ -196,7 +206,7 @@ function JogadorView() {
 
       // Preparar resumo do personagem para envio
       const characterSummary = getCharacterSummary(selectedCharacter);
-      
+
       await startPlayerSession(roomIdInput.trim(), characterSummary, {
         onConnected: handleConnected,
         onDisconnected: handleDisconnected,
@@ -233,7 +243,7 @@ function JogadorView() {
       return (
         <div className="no-characters-cta">
           <p>Você precisa criar um personagem primeiro</p>
-          <Button 
+          <Button
             variant="primary"
             onClick={() => navigate('/characters/new')}
           >
@@ -266,7 +276,7 @@ function JogadorView() {
    */
   const renderCharacterStatus = () => {
     if (!selectedCharacter) return null;
-    
+
     const maxHp = calculateMaxHp(selectedCharacter);
     const maxMp = calculateMaxMp(selectedCharacter);
     const currentHp = selectedCharacter.currentHp ?? maxHp;
@@ -294,8 +304,8 @@ function JogadorView() {
 
   return (
     <div className="page campaign-session-page">
-      <Header 
-        title="Entrar na Sessão" 
+      <Header
+        title="Entrar na Sessão"
         showBack
       />
 
@@ -322,7 +332,7 @@ function JogadorView() {
                   <p className="room-id-subtitle">
                     Digite o ID da sala fornecido pelo Mestre
                   </p>
-                  
+
                   <div className="input-group">
                     <input
                       type="text"
@@ -334,7 +344,7 @@ function JogadorView() {
                   </div>
 
                   <div className="action-buttons">
-                    <Button 
+                    <Button
                       variant="primary"
                       size="large"
                       fullWidth
@@ -379,13 +389,13 @@ function JogadorView() {
             </section>
 
             <div className="action-buttons">
-              <Button 
+              <Button
                 variant="primary"
                 onClick={() => navigate('/dice', { state: { characterId: selectedCharacter?.id } })}
               >
                 🎲 Rolar Dados
               </Button>
-              <Button 
+              <Button
                 variant="danger"
                 onClick={closeConnection}
               >
@@ -409,7 +419,7 @@ function JogadorView() {
                 A conexão com o Mestre foi interrompida
               </p>
               <div className="action-buttons">
-                <Button 
+                <Button
                   variant="secondary"
                   onClick={() => navigate(-1)}
                 >
@@ -426,13 +436,13 @@ function JogadorView() {
             <h3>❌ Erro</h3>
             <p className="qr-subtitle">{errorMessage || contextErrorMessage}</p>
             <div className="action-buttons">
-              <Button 
+              <Button
                 variant="primary"
                 onClick={() => setLocalState(CONNECTION_STATES.SELECTING)}
               >
                 🔄 Tentar Novamente
               </Button>
-              <Button 
+              <Button
                 variant="secondary"
                 onClick={() => navigate(-1)}
               >

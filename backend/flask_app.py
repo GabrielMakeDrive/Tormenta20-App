@@ -2,6 +2,7 @@ import sqlite3
 import uuid
 import json
 import datetime
+import random
 from flask import Flask, request, jsonify, g
 
 app = Flask(__name__)
@@ -113,7 +114,7 @@ def create_room():
     if not host_id:
         return jsonify({"error": "device_id required"}), 400
 
-    room_id = str(uuid.uuid4())[:8] # ID curto para facilitar
+    room_id = f"{random.randint(0, 999999):06d}" # ID de 6 números aleatórios
     
     db = get_db()
     try:

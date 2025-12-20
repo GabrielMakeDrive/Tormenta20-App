@@ -16,14 +16,14 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header, Button, Toast, Modal } from '../../components';
-import { 
+import {
   useConnection,
   SESSION_STATUS,
   isWebRTCSupported,
   isAndroidPlatform,
 } from '../../services';
 import { useRoom } from '../../context/RoomContext';
-import { loadSettings } from '../../services';
+import { loadSettings, loadCharacters } from '../../services';
 import './CampaignSession.css';
 
 // Estados da sessão (mapeia para SESSION_STATUS do Provider)
@@ -36,10 +36,10 @@ const SESSION_STATES = {
 
 function MestreView() {
   const navigate = useNavigate();
-  
+
   // === Room Context ===
   const { roomId } = useRoom();
-  
+
   // === Conexão via Context (Provider) ===
   const {
     status,
@@ -52,27 +52,39 @@ function MestreView() {
   } = useConnection();
 
   // Mapeia status do contexto para estado local da sessão
-  const sessionState = status;
-  
+  // SESSION_STATUS.CONNECTED também deve exibir a interface ativa do mestre
+  const sessionState =
+    status === SESSION_STATUS.CONNECTED
+      ? SESSION_STATUS.ACTIVE
+      : status;
+
   // Estado dos jogadores (do contexto)
   const players = contextPlayers;
-  
+
   // Erro (do contexto)
   const errorMessage = contextErrorMessage;
-  
+
   // === Estado local de UI ===
   const [rolls, setRolls] = useState([]);
-  
+
   // Toast
   const [toast, setToast] = useState(null);
-  
+
   // Configurações
   const [settings, setSettings] = useState({ soundEnabled: true, vibrationEnabled: true });
 
-  // Carrega configurações
+  // === Personagem do Mestre ===
+  const [hostCharacter, setHostCharacter] = useState(null);
+
+  // Carrega configurações e personagem do mestre
   useEffect(() => {
     const loadedSettings = loadSettings();
     setSettings(loadedSettings);
+
+    // Busca o personagem favorito para exibir como Mestre
+    const characters = loadCharacters();
+    const favorite = characters.find(c => c.isFavorite) || characters[0];
+    setHostCharacter(favorite);
   }, []);
 
   // Feedback tátil/sonoro
@@ -92,42 +104,47 @@ function MestreView() {
    */
   const handlePlayerConnected = useCallback((playerId, playerData) => {
     console.log('[MestreView] Jogador conectado:', playerId, playerData);
-    
+
     playFeedback('success');
-    setToast({ 
-      message: `${playerData?.info?.characterName || 'Jogador'} conectado!`, 
-      type: 'success' 
+    setToast({
+      message: `${playerData?.info?.characterName || 'Jogador'} conectado!`,
+      type: 'success'
     });
   }, [playFeedback]);
 
   const handlePlayerDisconnected = useCallback((playerId, playerInfo) => {
     console.log('[MestreView] Jogador desconectado:', playerId);
-    
+
     playFeedback('error');
-    setToast({ 
-      message: `${playerInfo?.characterName || 'Jogador'} desconectou`, 
-      type: 'warning' 
+    setToast({
+      message: `${playerInfo?.characterName || 'Jogador'} desconectou`,
+      type: 'warning'
     });
   }, [playFeedback]);
 
   const handleMessage = useCallback((playerId, message) => {
     console.log('[MestreView] Mensagem recebida:', playerId, message.type);
-    
+
     switch (message.type) {
       case 'diceRoll':
         // Adiciona rolagem ao histórico
         const rollEntry = {
-          id: Date.now(),
+          id: Date.now() + Math.random(), // Garante unicidade mesmo em rolagens simultâneas
           playerId,
           playerName: message.payload.playerName || 'Jogador',
           playerIcon: message.payload.playerIcon || '🎲',
           ...message.payload,
-          timestamp: message.ts,
+          timestamp: message.ts || Date.now(),
         };
         setRolls(prev => [rollEntry, ...prev].slice(0, 50));
         playFeedback();
         break;
-        
+
+      case 'hello':
+        console.log('[MestreView] Handshake recebido:', message.characterInfo?.characterName);
+        // O Provider já atualiza a lista de jogadores, aqui podemos apenas dar um feedback visual se quiser
+        break;
+
       default:
         console.log('[MestreView] Mensagem não tratada:', message.type);
     }
@@ -166,10 +183,10 @@ function MestreView() {
       });
 
       setRolls([]);
-      
+
       playFeedback('success');
       setToast({ message: 'Sessão iniciada! Compartilhe o ID da sala com os jogadores.', type: 'success' });
-      
+
     } catch (error) {
       console.error('[MestreView] Erro ao criar sessão:', error);
       setToast({ message: error.message || 'Erro ao criar sessão', type: 'error' });
@@ -177,58 +194,96 @@ function MestreView() {
   };
 
   /**
-   * Cria um novo convite para um jogador
+   * Renderiza a lista de jogadores/personagens conectados
    */
   const renderPlayersList = () => {
-    if (players.length === 0) {
+    // Lista final que inclui o mestre e os jogadores
+    const displayList = [];
+
+    // Adiciona o mestre como primeiro item se tiver personagem
+    // Usando blindagem total contra campos faltantes
+    if (hostCharacter) {
+      displayList.push({
+        playerId: 'host',
+        status: 'connected',
+        isHost: true,
+        info: {
+          characterName: `(Host) ${hostCharacter.name || 'Mestre'}`,
+          characterIcon: hostCharacter.icon || '💂‍♂️',
+          characterClass: hostCharacter.className || 'Mestre',
+          characterLevel: hostCharacter.level || '',
+          currentHp: hostCharacter.hp?.current,
+          maxHp: hostCharacter.hp?.max,
+          currentMp: hostCharacter.mp?.current,
+          maxMp: hostCharacter.mp?.max,
+        }
+      });
+    }
+
+    // Adiciona os demais jogadores conectados
+    if (Array.isArray(players)) {
+      const activePeers = players.filter(p => p && p.playerId !== 'host');
+      displayList.push(...activePeers);
+    }
+
+    if (displayList.length === 0) {
       return (
         <div className="empty-players">
           <div className="empty-icon">👥</div>
           <p>Nenhum jogador conectado</p>
-          <p className="text-muted">Os jogadores se conectarão automaticamente</p>
+          <p className="text-muted">Os jogadores aparecerão aqui ao entrar</p>
         </div>
       );
     }
 
     return (
       <div className="players-list">
-        {players.map(player => (
-          <div 
-            key={player.playerId} 
-            className={`player-card ${player.status}`}
-          >
-            <div className="player-avatar">
-              {player.info?.characterIcon || '👤'}
-            </div>
-            <div className="player-info">
-              <div className="player-name">
-                {player.info?.characterName || 'Conectando...'}
+        {displayList.map(player => {
+          if (!player) return null;
+
+          const pId = player.playerId || Math.random().toString();
+          const pStatus = player.status || 'pending';
+          const pInfo = player.info || {};
+          console.log(player);
+          return (
+            <div
+              key={pId}
+              className={`player-card ${pStatus} ${player.isHost ? 'host-card' : ''}`}
+            >
+              <div className="player-avatar">
+                {pInfo.characterIcon || '👤'}
               </div>
-              <div className="player-details">
-                {player.info?.characterClass && player.info?.characterLevel && (
-                  <span>{player.info.characterClass} Nv.{player.info.characterLevel}</span>
+              <div className="player-info">
+                <div className="player-name">
+                  {pInfo.characterName || (pStatus === 'connected' ? 'Sincronizando...' : 'Conectando...')}
+                </div>
+                <div className="player-details">
+                  {pInfo.characterClass ? (
+                    <span>{pInfo.characterClass} {pInfo.characterLevel ? `Nv.${pInfo.characterLevel}` : ''}</span>
+                  ) : (
+                    <span className="text-muted">Aguardando dados...</span>
+                  )}
+                </div>
+              </div>
+              <div className="player-status">
+                <span className={`status-badge ${pStatus}`}>
+                  {pStatus === 'connected' ? 'Conectado' :
+                    pStatus === 'pending' || pStatus === 'connecting' ? 'Iniciando' :
+                      pStatus === 'disconnected' ? 'Offline' : 'Reconectando'}
+                </span>
+
+                {pInfo.currentHp !== undefined && pInfo.maxHp !== undefined && (
+                  <div className="player-stats">
+                    <span className="stat-hp">❤️ {pInfo.currentHp}/{pInfo.maxHp}</span>
+                    {pInfo.currentMp !== undefined && (
+                      <span className="stat-mp">💧 {pInfo.currentMp}/{pInfo.maxMp}</span>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
-            <div className="player-status">
-              <span className={`status-badge ${player.status}`}>
-                {player.status === 'connected' && 'Conectado'}
-                {player.status === 'pending' && 'Conectando'}
-                {player.status === 'disconnected' && 'Desconectado'}
-                {player.status === 'reconnecting' && 'Reconectando'}
-              </span>
-              {player.restartReason && (
-                <div className="reconnect-reason">{player.restartReason}</div>
-              )}
-              {player.info?.currentHp !== undefined && (
-                <div className="player-stats">
-                  <span className="stat-hp">❤️ {player.info.currentHp}/{player.info.maxHp}</span>
-                  <span className="stat-mp">💧 {player.info.currentMp}/{player.info.maxMp}</span>
-                </div>
-              )}
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
@@ -264,8 +319,8 @@ function MestreView() {
 
   return (
     <div className="page campaign-session-page">
-      <Header 
-        title="Sessão do Mestre" 
+      <Header
+        title="Sessão do Mestre"
         showBack
       />
 
@@ -286,9 +341,9 @@ function MestreView() {
                 Como Mestre, você poderá ver o status dos personagens e rolagens de dados dos jogadores conectados.
               </p>
               <div className="action-buttons">
-                <Button 
-                  variant="primary" 
-                  size="large" 
+                <Button
+                  variant="primary"
+                  size="large"
                   fullWidth
                   onClick={startSession}
                 >
@@ -325,8 +380,8 @@ function MestreView() {
               <h4>🏰 Sala Criada</h4>
               <div className="room-id-display">
                 <p>ID da Sala: <strong>{roomId}</strong></p>
-                <Button 
-                  variant="secondary" 
+                <Button
+                  variant="secondary"
                   size="small"
                   onClick={() => navigator.clipboard.writeText(roomId)}
                 >
@@ -342,7 +397,9 @@ function MestreView() {
             <section className="players-section">
               <h4>
                 <span>👥 Jogadores Conectados</span>
-                <span className="player-count">{players.filter(p => p.status === 'connected').length}</span>
+                <span className="player-count">
+                  {players.filter(p => p && p.status === 'connected').length}
+                </span>
               </h4>
               {renderPlayersList()}
             </section>
@@ -358,13 +415,13 @@ function MestreView() {
             <h3>❌ Erro</h3>
             <p className="qr-subtitle">{errorMessage}</p>
             <div className="action-buttons">
-              <Button 
+              <Button
                 variant="primary"
                 onClick={startSession}
               >
                 🔄 Tentar Novamente
               </Button>
-              <Button 
+              <Button
                 variant="secondary"
                 onClick={() => navigate(-1)}
               >
