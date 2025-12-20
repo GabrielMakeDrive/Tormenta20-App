@@ -66,11 +66,11 @@ export const serializeForQR = (data) => {
   try {
     const json = JSON.stringify(data);
     const base64 = btoa(unescape(encodeURIComponent(json)));
-    
+
     if (base64.length > MAX_QR_PAYLOAD_SIZE) {
       console.warn(`Payload QR muito grande: ${base64.length} bytes (máx: ${MAX_QR_PAYLOAD_SIZE})`);
     }
-    
+
     return base64;
   } catch (error) {
     console.error('Erro ao serializar para QR:', error);
@@ -137,7 +137,7 @@ export const createHostSession = async (callbacks = {}) => {
     onError,
     onIceRestart,
   } = callbacks;
-  
+
   // Estado da sessão
   let isActive = true;
   let heartbeatInterval = null;
@@ -262,16 +262,16 @@ export const createHostSession = async (callbacks = {}) => {
   const createPlayerConnection = async () => {
     const peerConnection = new RTCPeerConnection(ICE_SERVERS);
     const playerId = generateUUID();
-    
+
     // Cria DataChannel antes de criar offer
-    const dataChannel = peerConnection.createDataChannel('campaign', {
+    const dataChannel = peerConnection.createDataChannel('sync_channel', {
       ordered: true,
     });
 
     // Configura eventos do DataChannel
     dataChannel.onopen = () => {
       console.log(`[Host] DataChannel aberto para jogador ${playerId}`);
-      
+
       // Envia ping inicial
       sendToPlayer(playerId, { type: 'ping', payload: { sessionId } });
     };
@@ -344,7 +344,7 @@ export const createHostSession = async (callbacks = {}) => {
    */
   const addAnswer = async (playerId, answerData) => {
     const player = players.get(playerId);
-    
+
     if (!player) {
       throw new Error(`Jogador ${playerId} não encontrado`);
     }
@@ -356,7 +356,7 @@ export const createHostSession = async (callbacks = {}) => {
       player.iceRestarting = false;
       player.status = 'connected';
       clearPlayerGraceTimer(player);
-      
+
       return true;
     } catch (error) {
       console.error('[Host] Erro ao processar answer:', error);
@@ -369,7 +369,7 @@ export const createHostSession = async (callbacks = {}) => {
    */
   const handlePlayerMessage = (playerId, message) => {
     const { type, payload, ts } = message;
-    
+
     console.log(`[Host] Mensagem de ${playerId}:`, type);
 
     switch (type) {
@@ -416,7 +416,7 @@ export const createHostSession = async (callbacks = {}) => {
    */
   const handlePlayerDisconnect = (playerId) => {
     const player = players.get(playerId);
-    
+
     if (player && player.status !== 'disconnected') {
       player.status = 'disconnected';
       player.iceRestarting = false;
@@ -431,7 +431,7 @@ export const createHostSession = async (callbacks = {}) => {
    */
   const sendToPlayer = (playerId, message) => {
     const player = players.get(playerId);
-    
+
     if (!player || !player.channel || player.channel.readyState !== 'open') {
       console.warn(`[Host] Não foi possível enviar para ${playerId}: canal não disponível`);
       return false;
@@ -455,7 +455,7 @@ export const createHostSession = async (callbacks = {}) => {
    */
   const broadcast = (message) => {
     let successCount = 0;
-    
+
     players.forEach((player, playerId) => {
       if (player.status === 'connected' && sendToPlayer(playerId, message)) {
         successCount++;
@@ -470,7 +470,7 @@ export const createHostSession = async (callbacks = {}) => {
    */
   const getConnectedPlayers = () => {
     const connected = [];
-    
+
     players.forEach((player, playerId) => {
       connected.push({
         playerId,
@@ -488,7 +488,7 @@ export const createHostSession = async (callbacks = {}) => {
   const close = () => {
     isActive = false;
     stopHeartbeat();
-    
+
     players.forEach((player, playerId) => {
       clearPlayerGraceTimer(player);
       try {
@@ -556,20 +556,20 @@ export const createHostSession = async (callbacks = {}) => {
 export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}) => {
   // Deserializa offer do QR Code
   const offerData = deserializeFromQR(offerQR);
-  
+
   if (!offerData || !offerData.offer) {
     throw new Error('QR Code inválido ou corrompido');
   }
 
   const { sessionId, playerId, offer } = offerData;
-  
+
   // Cria conexão
   const peerConnection = new RTCPeerConnection(ICE_SERVERS);
   let dataChannel = null;
   let isConnected = false;
   let graceTimer = null;
   let restartRequested = false;
-  
+
   const {
     onConnected,
     onDisconnected,
@@ -656,11 +656,11 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
   // Aguarda DataChannel criado pelo Mestre
   peerConnection.ondatachannel = (event) => {
     dataChannel = event.channel;
-    
+
     dataChannel.onopen = () => {
       console.log('[Player] DataChannel aberto');
       isConnected = true;
-      
+
       // Envia hello com informações do personagem
       sendMessage({
         type: 'hello',
@@ -669,7 +669,7 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
           ...characterInfo,
         },
       });
-      
+
       callbacks.onConnected?.();
     };
 
@@ -698,7 +698,7 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
   peerConnection.onconnectionstatechange = () => {
     const state = peerConnection.connectionState;
     console.log(`[Player] Estado da conexão: ${state}`);
-    
+
     if (state === 'disconnected' || state === 'failed' || state === 'closed') {
       isConnected = false;
       onDisconnected?.();
@@ -710,7 +710,7 @@ export const createPlayerSession = async (offerQR, characterInfo, callbacks = {}
    */
   const handleMessage = (message) => {
     const { type, payload } = message;
-    
+
     console.log('[Player] Mensagem recebida:', type);
 
     switch (type) {

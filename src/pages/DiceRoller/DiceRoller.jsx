@@ -1,17 +1,19 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Header, Button, DiceButton, Toast } from '../../components';
-import { 
-  DICE_TYPES, 
-  performRoll, 
-  SKILLS, 
+import {
+  DICE_TYPES,
+  performRoll,
+  SKILLS,
   getCharacterTotalAttributeValue
 } from '../../models';
-import { 
-  loadRollHistory, 
-  addRollToHistory, 
-  clearRollHistory, 
-  loadCharacters
+import {
+  loadRollHistory,
+  addRollToHistory,
+  clearRollHistory,
+  loadCharacters,
+  useConnection,
+  SESSION_STATUS
 } from '../../services';
 import './DiceRoller.css';
 
@@ -30,13 +32,13 @@ const getTrainingBonus = (level) => {
  */
 const getSkillBonus = (character, skill) => {
   if (!character) return 0;
-  
+
   const attrValue = getCharacterTotalAttributeValue(character, skill.attr);
   const level = Math.max(1, character.level);
   const halfLevel = Math.floor(level / 2);
   const isTrained = character.skills.includes(skill.id);
   const trainingBonus = isTrained ? getTrainingBonus(level) : 0;
-  
+
   return halfLevel + attrValue + trainingBonus;
 };
 
@@ -57,18 +59,22 @@ function DiceRoller() {
   const [modifier, setModifier] = useState(0);
   const [rollType, setRollType] = useState('normal');
   const [rollDescription, setRollDescription] = useState('');
-  
+
   const [currentRoll, setCurrentRoll] = useState(null);
   const [history, setHistory] = useState(() => loadRollHistory());
   const [toast, setToast] = useState(null);
   const [isRolling, setIsRolling] = useState(false);
-  
+
   // Character Mode State
   const [rollMode, setRollMode] = useState('free'); // 'free' | 'character'
   const [characters, setCharacters] = useState([]);
   const [activeCharacter, setActiveCharacter] = useState(null);
   const [isSelectionExpanded, setIsSelectionExpanded] = useState(true);
   const [selectedOption, setSelectedOption] = useState(null);
+
+  // === Conexão WebRTC para enviar rolagens ao mestre ===
+  const { status, isPlayer, sendDiceRoll } = useConnection();
+  const isConnectedToSession = isPlayer && status === SESSION_STATUS.CONNECTED;
 
   // Load characters and set active one
   useEffect(() => {
@@ -96,11 +102,11 @@ function DiceRoller() {
     }
   }, [location.state]);
 
-  
+
 
   const handleRoll = () => {
     setIsRolling(true);
-    
+
     // Animação simulada
     setTimeout(() => {
       const roll = performRoll(selectedDice, diceCount, modifier, rollType, rollDescription);
@@ -108,6 +114,21 @@ function DiceRoller() {
       addRollToHistory(roll);
       setHistory(prev => [...prev, roll]);
       setIsRolling(false);
+
+      // === Enviar rolagem ao mestre se conectado à sessão ===
+      if (isConnectedToSession && sendDiceRoll) {
+        // Prepara dados serializáveis para envio via WebRTC
+        const rollPayload = {
+          ...roll.toJSON(),
+          // Inclui playerId para correlação no mestre (será usado junto com os dados do jogador)
+          playerId: activeCharacter?.id || null,
+        };
+
+        const sent = sendDiceRoll(rollPayload);
+        if (sent) {
+          console.log('[DiceRoller] Rolagem enviada ao mestre:', rollPayload.description || rollPayload.diceType);
+        }
+      }
 
       // Vibração no celular se disponível
       if (navigator.vibrate) {
@@ -135,7 +156,7 @@ function DiceRoller() {
     if (!activeCharacter) return;
     // Em Tormenta 20, o valor do atributo é usado diretamente, não há modificador
     const attrValue = getCharacterTotalAttributeValue(activeCharacter, attrKey);
-    
+
     setSelectedDice('d20');
     setDiceCount(1);
     setModifier(attrValue);
@@ -143,13 +164,13 @@ function DiceRoller() {
     setRollDescription(`Teste de ${attrLabel}`);
     setSelectedOption({ type: 'attribute', key: attrKey, label: attrLabel, bonus: attrValue });
     setIsSelectionExpanded(false);
-    
+
     setToast({ message: `Configurado: Teste de ${attrLabel} (${attrValue >= 0 ? '+' : ''}${attrValue})`, type: 'info' });
   };
 
   const setupSkillRoll = useCallback((skill) => {
     if (!activeCharacter) return;
-    
+
     const totalBonus = getSkillBonus(activeCharacter, skill);
 
     setSelectedDice('d20');
@@ -159,7 +180,7 @@ function DiceRoller() {
     setRollDescription(`Perícia: ${skill.name}`);
     setSelectedOption({ type: 'skill', skill, bonus: totalBonus });
     setIsSelectionExpanded(false);
-    
+
     setToast({ message: `Configurado: ${skill.name} (${totalBonus >= 0 ? '+' : ''}${totalBonus})`, type: 'info' });
   }, [activeCharacter]);
 
@@ -188,19 +209,19 @@ function DiceRoller() {
   return (
     <div className="page dice-roller-page">
       <Header title="Rolar Dados" />
-      
+
       <main className="page-content">
         {/* Mode Toggle */}
         {characters.length > 0 && (
           <div className="roll-mode-toggle">
-            <button 
-              className={rollMode === 'free' ? 'active' : ''} 
+            <button
+              className={rollMode === 'free' ? 'active' : ''}
               onClick={() => { setRollMode('free'); setRollDescription(''); setIsSelectionExpanded(true); setSelectedOption(null); }}
             >
               Livre
             </button>
-            <button 
-              className={rollMode === 'character' ? 'active' : ''} 
+            <button
+              className={rollMode === 'character' ? 'active' : ''}
               onClick={() => { setRollMode('character'); setIsSelectionExpanded(true); setSelectedOption(null); }}
             >
               Personagem
@@ -234,8 +255,8 @@ function DiceRoller() {
         {/* Character Selector */}
         {rollMode === 'character' && characters.length > 0 && (
           <div className="character-selector">
-            <select 
-              value={activeCharacter?.id || ''} 
+            <select
+              value={activeCharacter?.id || ''}
               onChange={(e) => { setActiveCharacter(characters.find(c => c.id === e.target.value)); setIsSelectionExpanded(true); setSelectedOption(null); }}
             >
               {characters.map(c => (
@@ -269,8 +290,8 @@ function DiceRoller() {
                 {!isSelectionExpanded && selectedOption ? (
                   <div className="selection-collapsed" onClick={() => setIsSelectionExpanded(true)}>
                     <span className="selection-label">
-                      {selectedOption.type === 'attribute' 
-                        ? `${selectedOption.label}` 
+                      {selectedOption.type === 'attribute'
+                        ? `${selectedOption.label}`
                         : `${selectedOption.skill.name}`}
                     </span>
                     <span className="selection-bonus">
@@ -280,43 +301,43 @@ function DiceRoller() {
                   </div>
                 ) : (
                   <>
-                <div className="attributes-grid">
-                  {ATTRIBUTES.map(attr => {
-                    const attrDisplay = getAttributeDisplay(activeCharacter, attr.key);
-                    return (
-                      <button 
-                        key={attr.key} 
-                        className="attribute-roll-btn"
-                        onClick={() => setupAttributeRoll(attr.key, attr.label)}
-                      >
-                        <span className="attr-abbr">{attr.abbr}</span>
-                        <span className="attr-value">{attrDisplay.value >= 0 ? '+' : ''}{attrDisplay.value}</span>
-                      </button>
-                    );
-                  })}
-                </div>
+                    <div className="attributes-grid">
+                      {ATTRIBUTES.map(attr => {
+                        const attrDisplay = getAttributeDisplay(activeCharacter, attr.key);
+                        return (
+                          <button
+                            key={attr.key}
+                            className="attribute-roll-btn"
+                            onClick={() => setupAttributeRoll(attr.key, attr.label)}
+                          >
+                            <span className="attr-abbr">{attr.abbr}</span>
+                            <span className="attr-value">{attrDisplay.value >= 0 ? '+' : ''}{attrDisplay.value}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                <div className="skills-list">
-                  <h3>Perícias</h3>
-                  <div className="skills-grid">
-                    {SKILLS.map(skill => {
-                      const isTrained = activeCharacter.skills.includes(skill.id);
-                      const bonus = getSkillBonus(activeCharacter, skill);
+                    <div className="skills-list">
+                      <h3>Perícias</h3>
+                      <div className="skills-grid">
+                        {SKILLS.map(skill => {
+                          const isTrained = activeCharacter.skills.includes(skill.id);
+                          const bonus = getSkillBonus(activeCharacter, skill);
 
-                      return (
-                        <button 
-                          key={skill.id} 
-                          className={`skill-roll-btn ${isTrained ? 'trained' : ''}`}
-                          onClick={() => setupSkillRoll(skill)}
-                        >
-                          <span className="skill-name">{skill.name}</span>
-                          <span className="skill-bonus">{bonus >= 0 ? '+' : ''}{bonus}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-                </>
+                          return (
+                            <button
+                              key={skill.id}
+                              className={`skill-roll-btn ${isTrained ? 'trained' : ''}`}
+                              onClick={() => setupSkillRoll(skill)}
+                            >
+                              <span className="skill-name">{skill.name}</span>
+                              <span className="skill-bonus">{bonus >= 0 ? '+' : ''}{bonus}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </>
                 )}
               </>
             ) : (
@@ -349,19 +370,19 @@ function DiceRoller() {
             <div className="config-row">
               <label>Tipo de Rolagem</label>
               <div className="roll-type-buttons">
-                <button 
+                <button
                   className={rollType === 'normal' ? 'active' : ''}
                   onClick={() => setRollType('normal')}
                 >
                   Normal
                 </button>
-                <button 
+                <button
                   className={rollType === 'advantage' ? 'active' : ''}
                   onClick={() => setRollType('advantage')}
                 >
                   ⬆️ Vantagem
                 </button>
-                <button 
+                <button
                   className={rollType === 'disadvantage' ? 'active' : ''}
                   onClick={() => setRollType('disadvantage')}
                 >
@@ -374,9 +395,9 @@ function DiceRoller() {
 
         {/* Botão de Rolar */}
         <section className="roll-action">
-          <Button 
-            variant="primary" 
-            size="large" 
+          <Button
+            variant="primary"
+            size="large"
             fullWidth
             onClick={handleRoll}
             disabled={isRolling}
@@ -397,7 +418,7 @@ function DiceRoller() {
               </button>
             )}
           </div>
-          
+
           {history.length === 0 ? (
             <p className="history-empty">Nenhuma rolagem ainda</p>
           ) : (
@@ -422,10 +443,10 @@ function DiceRoller() {
       </main>
 
       {toast && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
     </div>

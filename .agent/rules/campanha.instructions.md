@@ -1,327 +1,128 @@
-# Documentação Técnica do Frontend (React PWA + WebRTC)
-1. Visão Geral da Arquitetura
-O frontend será uma Single Page Application (SPA) em React. A comunicação segue dois caminhos distintos:
+---
+trigger: always_on
+---
 
-Sinalização (HTTP): Comunicação com o servidor Python (Polling, Criação de Sala).
+---
+applyTo: "**/pages/CampaignSession/**"
+---
 
-Dados (WebRTC DataChannel): Comunicação direta entre dispositivos (P2P) para sincronização de estado.
+# Sessão de Campanha (Mestre + Jogadores) - Instruções Consolidadas
 
-Fase 1: Fundações e Roteamento
-Objetivo: Criar a estrutura base, navegação e gerenciamento de estado global simples. Dependência: Nenhuma.
+## Propósito
+Permitir que um usuário inicie uma sessão como **Mestre**, gerando uma sala com ID único para que jogadores se conectem via WebRTC. O objetivo é a sincronização em tempo real de rolagens de dados, status de personagens e eventos da campanha, utilizando o servidor de sinalização apenas para o estabelecimento da conexão P2P (WebRTC DataChannel).
 
-1.1. Estrutura de Diretórios Recomendada
-Plaintext
+## Localização e Componentes
+`src/pages/CampaignSession/`
+- `MestreView.jsx`: Painel de controle do mestre. Gerencia a criação da sala, visualiza jogadores conectados e histórico de rolagens.
+- `JogadorView.jsx`: Interface do jogador. Permite selecionar um personagem e conectar-se à sala do mestre via ID.
+- `CampaignSession.css`: Estilos unificados para as telas de sessão.
 
-/src
-  /api        -> (Fase 2) Funções de fetch para o backend Python
-  /webrtc     -> (Fase 3) Lógica de conexão P2P
-  /hooks      -> Hooks customizados (useInterval, useP2P)
-  /context    -> Estado global (RoomContext)
-  /components -> UI Reutilizável (Botões, Inputs, Cards)
-  /pages      -> Telas principais (Home, HostRoom, PeerRoom)
-1.2. Definição das Rotas
-Utilize react-router-dom.
+## Arquitetura de Conexão
 
-/: Tela inicial. Escolha entre "Criar Sala" ou "Entrar em Sala".
+### 1. Topologia (Estrela)
+- **Mestre (Host)**: Centraliza todas as conexões. Cada jogador possui um `RTCPeerConnection` independente com o mestre.
+- **Jogadores (Players)**: Conectam-se apenas ao mestre. Não há comunicação direta P2P entre jogadores (apenas via broadcast do mestre).
 
-/host/:roomId: Tela de controle do Host. Mostra lista de conectados e status.
+### 2. Camada de Sinalização (Backend Flask)
+A sinalização é feita via HTTP Polling no servidor Python (`flask_app.py`), substituindo WebSockets por simplicidade e compatibilidade.
+- **Endpoints Principais**:
+    - `POST /rooms`: Cria uma sala vinculada ao `deviceId` do mestre.
+    - `POST /rooms/{id}/join`: Jogador entra na sala e descobre o `deviceId` do mestre.
+    - `POST /rooms/{id}/signal`: Troca de Offer/Answer/ICE candidates.
+    - `GET /rooms/{id}/participants`: Mestre descobre novos jogadores aguardando conexão.
+    - `POST /rooms/{id}/heartbeat`: Mantém a presença ativa e detecta desconexões.
 
-/join: Tela para o Peer digitar o ID da sala.
+### 3. Persistência e Resiliência (F5 Support)
+- **LocalStorage**: O `RoomContext` persiste `roomId`, `role` e `apiToken`.
+- **Auto-Resume**: Ao atualizar a página (F5), tanto `MestreView` quanto `JogadorView` tentam restaurar a sessão automaticamente usando os dados persistidos.
+- **Handshake Reativo (`requestOffer`)**: Quando um jogador entra ou reconecta, ele envia um sinal `requestOffer` ao mestre. O mestre, ao receber, re-inicia o processo de `addPeer`, garantindo uma reconexão rápida mesmo que o estado anterior do PeerConnection esteja corrompido.
 
-/room/:roomId: Tela do Peer conectado.
+## Gerenciamento de Conexão (`ConnectionProvider`)
 
-1.3. Contexto Global (RoomContext)
-Deve armazenar apenas dados "meta" da sessão, não o estado do app em tempo real.
+Toda a lógica WebRTC é encapsulada no `ConnectionProvider.jsx` no topo da árvore React.
+- **Regra de Ouro**: **NUNCA** crie ou manipule `RTCPeerConnection` diretamente nas Views. Use o hook `useConnection()`.
+- **Navegação**: Use apenas `<Link>` ou `navigate()` para mudar de tela. O uso de `window.location` causará reload e destruição do estado do Provider.
 
-TypeScript
+### Interface do Contexto (`useConnection`)
+```js
+{
+  // Estado
+  status,          // idle | creating | active | connected | disconnected | error
+  players,         // Lista de jogadores conectados e seus status
+  errorMessage,    
+  isHost,
+  isPlayer,
 
-interface RoomContextType {
-  role: 'host' | 'peer' | null;
-  roomId: string | null;
-  deviceId: string; // Gerar UUID no primeiro load e salvar no localStorage
-  apiToken: string | null;
+  // Métodos
+  startHostSession: (options) => Promise,
+  startPlayerSession: (roomId, characterInfo, options) => Promise,
+  endSession: () => void,
+  sendCharacterUpdate: (data) => boolean,
+  sendDiceRoll: (rollData) => boolean,
 }
-Fase 2: Camada de API (Signaling Client)
-Objetivo: Isolar toda a comunicação HTTP com o servidor Python. Dependência: Backend Python rodando.
+```
+
+## Fluxos Principais
+
+### Fluxo de Criação (Mestre)
+1. Mestre gera ID da sala (6 caracteres).
+2. O sistema entra em polling de participantes.
+3. Ao detectar novo participante -> Mestre cria `Offer` -> Envia via sinalização.
+4. Recebe `Answer` -> Estabelece P2P.
+
+### Fluxo de Entrada (Jogador)
+1. Jogador seleciona personagem (essencial para o handshake).
+2. Digita ID da sala (6 caracteres, caixa alta).
+3. Envia `joinRoom` + `requestOffer`.
+4. Recebe `Offer` do mestre -> Gera `Answer` -> Estabelece P2P.
+
+### Troca de Dados (DataChannel)
+- Canal: `sync_channel` (ordenado, confiável).
+- Formato: JSON `{ type, payload, ts }`.
+- Mensagens:
+    - `hello`: Handshake inicial com resumo do personagem.
+    - `characterUpdate`: PV, PM, Defesa e condições atuais.
+    - `diceRoll`: Resultados de dados formatados.
+    - `ping/pong`: Verificação de latência e atividade.
+
+## Inconsistências Identificadas e Corrigidas
+- **Sinalização**: Removida a obrigatoriedade de QR Code para SDP. O QR Code agora é opcional e deve conter apenas o ID da sala para facilitar a entrada. O estabelecimento da conexão é via Backend.
+- **Manual Copy/Paste**: O fluxo de "copiar e colar SDP" foi descontinuado em favor da sinalização automática via servidor Flask para melhor UX.
+- **Roles**: Padronizado para `host` (mestre) e `player` (jogador).
+- **Persistência**: Anteriormente o estado era apenas em memória; agora há persistência parcial para suportar recarregamento de página.
+- **Answers Duplicados**: O `HostConnection.handleAnswer()` agora verifica o `signalingState` do RTCPeerConnection antes de processar. Se já está em `stable`, answers redundantes são ignorados silenciosamente, evitando o erro fatal "Called in wrong state: stable".
+- **Offers Duplicadas**: Tanto `HostConnection.addPeer()` quanto `PeerConnection.handleOffer()` agora verificam se já existe uma conexão em andamento (`SIGNALING`, `CONNECTING` ou `CONNECTED`) e ignoram chamadas duplicadas, evitando loops de reconexão.
+
+## Regras de Estilo e UI
+- O campo de ID da sala no jogador deve ser grande (font-size ~2.5rem), centralizado e monoespaçado.
+- Mestre deve ter botão de "Encerrar Sala" com modal de confirmação.
+- Usar variáveis de `styles/global.css` para cores de status (ex: `--success-color` para conectado).
+- Feedback sonoro/vibratório em rolagens críticas (opcional no mestre).
+
+## Regras de Negócio
+
+### Ciclo de Vida da Sessão do Mestre
+- **Sala Persistente**: A sala do mestre permanece aberta independentemente do status dos jogadores. Jogadores podem entrar e sair livremente sem afetar a sessão do mestre.
+- **Encerramento Explícito**: A sala só é encerrada quando o mestre clica em "Encerrar Sala" (com modal de confirmação) ou fecha/recarrega o app.
+- **Reconexão Automática**: Se o mestre der F5, a sessão é restaurada automaticamente via dados persistidos no localStorage (uma única vez para evitar duplicação).
+
+### Ciclo de Vida da Sessão do Jogador
+- **Seleção Obrigatória**: O jogador deve selecionar um personagem antes de entrar na sala.
+- **Reconexão via requestOffer**: Ao entrar ou reconectar, o jogador envia um sinal `requestOffer` ao mestre para disparar a criação de uma nova Offer imediatamente.
+- **Desconexão não afeta outros**: Se um jogador desconecta, apenas seu status é atualizado na lista do mestre. Os demais jogadores e o mestre não são afetados.
+
+### Estados do Host (HostConnection)
+| Estado | Significado |
+|--------|-------------|
+| `ACTIVE` | Sala aberta, pronta para receber jogadores |
+| `CONNECTED` | Pelo menos um jogador está conectado |
+| `SIGNALING` | Troca de Offer/Answer em andamento |
+| `DISCONNECTED` | Sala encerrada pelo mestre (via `endSession`) |
+
+**Importante**: O Host nunca entra em estado `FAILED` ou `DISCONNECTED` por causa de jogadores saindo. Isso garante que a sala permaneça aberta.
+
+## Segurança e Limitações
+- Android Only (PWA).
+- Dados de personagem são lidos localmente pelo jogador e enviados ao mestre; o mestre não altera a ficha original no banco local do jogador.
+- O mestre pode expulsar ou encerrar a sala, limpando os dados no servidor de sinalização via endpoint `/close`.
 
-2.1. Serviço de API (api/signaling.js)
-Crie funções puras para cada endpoint do backend.
-
-createRoom(deviceId): Retorna room_id e token.
-
-joinRoom(roomId, deviceId): Retorna token e host_id.
-
-sendSignal(roomId, message): Envia Offer/Answer/ICE.
-
-getSignals(roomId, deviceId): Faz o GET e retorna array de mensagens.
-
-sendHeartbeat(roomId, deviceId): Endpoint de "estou vivo".
-
-2.2. Hook de Polling (hooks/useSignaling.js)
-Como não usamos WebSocket, precisamos de um hook inteligente para buscar mensagens.
-
-Input: interval (ex: 2000ms).
-
-Lógica: Usar setInterval. Se uma mensagem chegar, pausar o intervalo, processar e retomar (para evitar requests encavalados).
-
-Backoff: Se receber erro 500 ou timeout, aumentar o intervalo (2s -> 5s -> 10s).
-
-Fase 3: Core WebRTC (O "Cérebro")
-Objetivo: Criar a conexão P2P sem depender da UI. Dependência: Fase 2 (para troca de chaves).
-
-Nesta fase, não crie telas. Crie uma classe ou hook (useWebRTC) que gerencie a conexão.
-
-3.1. Máquina de Estados da Conexão
-O WebRTC deve expor os seguintes estados para a UI:
-
-DISCONNECTED
-
-SIGNALING (Trocando offer/answer via API)
-
-CONNECTING (Tentando furar o NAT)
-
-CONNECTED (P2P estabelecido)
-
-FAILED
-
-3.2. Lógica do Host (webrtc/HostConnection.js)
-Mantém um Map<DeviceId, RTCPeerConnection>. O Host tem uma conexão para CADA Peer.
-
-Ao detectar novo peer (via API /participants), cria um RTCPeerConnection.
-
-Cria o DataChannel ("sync_channel").
-
-Gera Offer -> Envia via API.
-
-3.3. Lógica do Peer (webrtc/PeerConnection.js)
-Mantém apenas uma RTCPeerConnection (com o Host).
-
-Ouve o evento ondatachannel (não cria o canal, apenas recebe).
-
-Ao receber Offer (via API) -> Gera Answer -> Envia via API.
-
-Fase 4: Integração de UI e Fluxos
-Objetivo: Conectar a API e o WebRTC às telas criadas na Fase 1. Dependência: Fase 1, 2 e 3.
-
-4.1. Tela do Host (/host/:roomId)
-Mount: Chama API createRoom. Exibe o room_id na tela.
-
-Loop: Inicia Polling de /participants.
-
-Detect: Se lista de participantes mudar, iniciar conexão WebRTC (Fase 3) para o novo device.
-
-Display: Lista de dispositivos com bolinha verde (P2P on) ou amarela (Sinalizando).
-
-4.2. Tela do Peer (/room/:roomId)
-Action: Usuário digita ID e clica "Entrar". Chama API joinRoom.
-
-Loop: Inicia Polling de /signal.
-
-React:
-
-Recebeu Offer? -> pc.setRemoteDescription -> createAnswer -> api.sendSignal.
-
-Recebeu ICE? -> pc.addIceCandidate.
-
-Ready: Quando estado mudar para CONNECTED, esconder loading e mostrar interface do app.
-
-Fase 5: PWA e Resiliência (Offline Parcial)
-Objetivo: Garantir que o app funcione em redes instáveis. Dependência: App funcional.
-
-5.1. Service Worker
-Cache dos assets estáticos (JS, CSS, HTML) para carregar instantaneamente.
-
-Não cachear as rotas da API (/rooms/*).
-
-5.2. Tratamento de "Offline Parcial"
-Heartbeat UI: Se o request de heartbeat falhar 3x, mostrar toast: "Conexão instável com servidor... tentando P2P".
-
-P2P Keepalive: O WebRTC já tem mecanismos internos, mas você pode enviar um "ping" pelo DataChannel a cada 5s. Se falhar, tentar reiniciar o processo de sinalização (Ice Restart).
-
-# Estrutura das rotas:
-
-1️⃣ Criar sala (HOST)
-
-
-
-POST /rooms
-
-Request
-
-
-
-{
-
-"device_id": "device_1"}
-
-Response
-
-
-
-{
-
-"room_id": "abc123",
-
-"token": "host-token"}
-
-🔹 Funções:
-
-
-
-Gera room_id
-
-Registra host
-
-Define TTL da sala
-
-Retorna token simples (JWT ou UUID)
-
-2️⃣ Entrar em sala (PEER)
-
-
-
-POST /rooms/{room_id}/join
-
-Request
-
-
-
-{
-
-"device_id": "device_2"}
-
-Response
-
-
-
-{
-
-"token": "peer-token",
-
-"host_id": "device_1"}
-
-🔹 Funções:
-
-
-
-Verifica se sala existe
-
-Registra participante
-
-Retorna quem é o host
-
-3️⃣ Enviar sinalização (offer / answer / ice)
-
-
-
-POST /rooms/{room_id}/signal
-
-Request
-
-
-
-{
-
-"from": "device_2",
-
-"to": "device_1",
-
-"type": "offer",
-
-"payload": { "sdp": "..." }}
-
-Response
-
-
-
-{ "ok": true }
-
-🔹 Funções:
-
-
-
-Salva mensagem temporariamente
-
-Não precisa garantir entrega imediata
-
-4️⃣ Buscar sinalizações pendentes (POLLING)
-
-
-
-GET /rooms/{room_id}/signal?device_id=device_1
-
-Response
-
-
-
-[
-
-{
-
-"from": "device_2",
-
-"type": "offer",
-
-"payload": { }
-
-}]
-
-🔹 Funções:
-
-
-
-Retorna mensagens destinadas ao device
-
-Remove após leitura (ou marca como entregue)
-
-💡 Isso substitui WebSocket
-
-5️⃣ Heartbeat / presença (offline parcial)
-
-
-
-POST /rooms/{room_id}/heartbeat
-
-
-
-{
-
-"device_id": "device_2"}
-
-🔹 Funções:
-
-
-
-Atualiza last_seen
-
-Permite detectar peers “mortos”
-
-6️⃣ Listar participantes (HOST)
-
-
-
-GET /rooms/{room_id}/participants
-
-Response
-
-
-
-[
-
-{ "device_id": "device_2", "last_seen": "..." }]
-
-7️⃣ Encerrar sala (HOST)
-
-
-
-POST /rooms/{room_id}/close
-
-🔹 Funções:
-
-
-
-Marca sala como encerrada
-
-Remove sinalizações pendentes
-
-Notifica peers na próxima poll

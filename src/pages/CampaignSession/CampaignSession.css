@@ -15,6 +15,55 @@
   padding-bottom: calc(var(--spacing-xl) + 80px);
 }
 
+/* Custom Room ID input style for JogadorView */
+.room-id-input {
+  font-size: 2.5rem !important;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.5rem;
+  padding: var(--spacing-md) !important;
+  font-family: 'Courier New', Courier, monospace;
+  width: 100%;
+  max-width: 320px;
+  margin: var(--spacing-lg) auto !important;
+  display: block;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-color);
+  color: var(--primary-color);
+  text-transform: uppercase;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.room-id-input:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+}
+
+.room-id-input::placeholder {
+  letter-spacing: normal;
+  font-size: 1.5rem;
+  opacity: 0.3;
+}
+
+/* Close Session controls */
+.session-actions {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-footer-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+.modal-footer-actions button {
+  flex: 1;
+}
+
 /* Seção de alerta de compatibilidade */
 .compatibility-warning {
   background-color: var(--warning-color);
@@ -471,6 +520,51 @@
   text-align: right;
 }
 
+.roll-result.critical {
+  color: var(--warning-color);
+  text-shadow: 0 0 4px rgba(255, 193, 7, 0.5);
+}
+
+/* Estilos para rolagens críticas */
+.roll-item.critical-success {
+  background-color: rgba(76, 175, 80, 0.15);
+  border-left: 3px solid var(--success-color);
+}
+
+.roll-item.critical-failure {
+  background-color: rgba(244, 67, 54, 0.15);
+  border-left: 3px solid var(--danger-color);
+}
+
+.roll-item.critical-success .roll-result {
+  color: var(--success-color);
+}
+
+.roll-item.critical-failure .roll-result {
+  color: var(--danger-color);
+}
+
+/* Badge de crítico/falha */
+.critical-badge {
+  display: inline-block;
+  margin-left: var(--spacing-sm);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.critical-badge.success {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: var(--success-color);
+}
+
+.critical-badge.failure {
+  background-color: rgba(244, 67, 54, 0.2);
+  color: var(--danger-color);
+}
+
 /* Input manual de texto */
 .manual-input-section {
   margin-top: var(--spacing-md);
@@ -564,9 +658,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.4;
   }
@@ -706,11 +803,11 @@
   .controls-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .status-grid {
     grid-template-columns: repeat(4, 1fr);
   }
-  
+
   .invite-actions {
     flex-wrap: nowrap;
   }

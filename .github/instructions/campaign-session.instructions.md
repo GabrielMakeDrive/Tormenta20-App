@@ -2,154 +2,162 @@
 applyTo: "**/pages/CampaignSession/**"
 ---
 
-# Sessão de Campanha (Mestre + Jogadores) - Instruções
+# Sessão de Campanha (Mestre + Jogadores) - Instruções Consolidadas
 
 ## Propósito
-Permitir que um usuário inicie uma sessão como **Mestre**, gerando convites para jogadores se conectarem via WebRTC (sem backend). O Mestre visualiza status dos personagens conectados e recebe eventos de rolagem de dados em tempo real.
+Permitir que um usuário inicie uma sessão como **Mestre**, gerando uma sala com ID único para que jogadores se conectem via WebRTC. O objetivo é a sincronização em tempo real de rolagens de dados, status de personagens e eventos da campanha, utilizando o servidor de sinalização apenas para o estabelecimento da conexão P2P (WebRTC DataChannel).
 
-## Localização
+## Localização e Componentes
 `src/pages/CampaignSession/`
-- `MestreView`: tela para criar/gerenciar a sessão e processar respostas dos jogadores.
-- `JogadorView`: tela para ingressar na sessão do Mestre via código de convite.
-- Compartilham helpers de UI e um serviço dedicado (`services/webrtcSession.js`).
+- `MestreView.jsx`: Painel de controle do mestre. Gerencia a criação da sala, visualiza jogadores conectados e histórico de rolagens.
+- `JogadorView.jsx`: Interface do jogador. Permite selecionar um personagem e conectar-se à sala do mestre via ID.
+- `CampaignSession.css`: Estilos unificados para as telas de sessão.
 
-## Arquitetura de Conexão (v2 - Convites Individuais)
+## Arquitetura de Conexão
 
-### Por que não usar QR Code?
-A SDP (Session Description Protocol) do WebRTC é muito grande para QR Codes confiáveis. A solução usa **cópia/cola de texto** via WhatsApp, Telegram ou outros apps de mensagem.
+### 1. Topologia (Estrela)
+- **Mestre (Host)**: Centraliza todas as conexões. Cada jogador possui um `RTCPeerConnection` independente com o mestre.
+- **Jogadores (Players)**: Conectam-se apenas ao mestre. Não há comunicação direta P2P entre jogadores (apenas via broadcast do mestre).
 
-### Modelo de Conexão
-- **Cada jogador tem sua própria conexão** (RTCPeerConnection independente)
-- Mestre cria um **convite individual** para cada jogador
-- Convites pendentes ficam em lista até receberem resposta
-- Não há "QR único para todos" - cada convite é único
+### 2. Camada de Sinalização (Backend Flask)
+A sinalização é feita via HTTP Polling no servidor Python (`flask_app.py`), substituindo WebSockets por simplicidade e compatibilidade.
+- **Endpoints Principais**:
+    - `POST /rooms`: Cria uma sala vinculada ao `deviceId` do mestre.
+    - `POST /rooms/{id}/join`: Jogador entra na sala e descobre o `deviceId` do mestre.
+    - `POST /rooms/{id}/signal`: Troca de Offer/Answer/ICE candidates.
+    - `GET /rooms/{id}/participants`: Mestre descobre novos jogadores aguardando conexão.
+    - `POST /rooms/{id}/heartbeat`: Mantém a presença ativa e detecta desconexões.
 
-### Estrutura
-```
-App.js
-└── ConnectionProvider              ← Mantém conexões vivas
-    └── Router
-        └── Routes
-            ├── /session/host → MestreView (consome useConnection)
-            └── /session/join → JogadorView (consome useConnection)
-```
+### 3. Persistência e Resiliência (F5 Support)
+- **LocalStorage**: O `RoomContext` persiste `roomId`, `role` e `apiToken`.
+- **Auto-Resume**: Ao atualizar a página (F5), tanto `MestreView` quanto `JogadorView` tentam restaurar a sessão automaticamente usando os dados persistidos.
+- **Handshake Reativo (`requestOffer`)**: Quando um jogador entra ou reconecta, ele envia um sinal `requestOffer` ao mestre. O mestre, ao receber, re-inicia o processo de `addPeer`, garantindo uma reconexão rápida mesmo que o estado anterior do PeerConnection esteja corrompido.
 
-### Regras Importantes
-1. **Nunca criar RTCPeerConnection nas Views** - usar apenas o Provider
-2. **Usar `<Link>` ou `navigate()`** - nunca `window.location` ou `<a href>` (causam reload)
-3. **Views consomem via `useConnection()`** - não criam/fecham conexões
-4. **Cleanup no Provider** - conexões fechadas apenas no unmount do Provider
+## Gerenciamento de Conexão (`ConnectionProvider`)
 
-### Interface do Context (`useConnection`)
+Toda a lógica WebRTC é encapsulada no `ConnectionProvider.jsx` no topo da árvore React.
+- **Regra de Ouro**: **NUNCA** crie ou manipule `RTCPeerConnection` diretamente nas Views. Use o hook `useConnection()`.
+- **Navegação**: Use apenas `<Link>` ou `navigate()` para mudar de tela. O uso de `window.location` causará reload e destruição do estado do Provider.
+
+### Interface do Contexto (`useConnection`)
 ```js
 {
-  // Estado (reativo)
-  sessionType: 'host' | 'player' | null,
-  status: 'idle' | 'creating' | 'active' | 'connected' | 'disconnected' | 'error',
-  players: Array,
-  pendingInvites: Array,  // Convites aguardando resposta
-  answerQR: string | null,
-  errorMessage: string | null,
-  
+  // Estado
+  status,          // idle | creating | active | connected | disconnected | error
+  players,         // Lista de jogadores conectados e seus status
+  errorMessage,    
+  isHost,
+  isPlayer,
+
   // Métodos
-  startHostSession: (callbacks) => Promise,
-  startPlayerSession: (offerCode, characterInfo, callbacks) => Promise,
+  startHostSession: (options) => Promise,
+  startPlayerSession: (roomId, characterInfo, options) => Promise,
   endSession: () => void,
-  createInvite: () => Promise,      // Cria novo convite individual
-  cancelInvite: (playerId) => void, // Cancela convite pendente
-  addAnswer: (playerId, answerData) => Promise,
-  sendToPlayer: (playerId, message) => boolean,
-  broadcast: (message) => number,
   sendCharacterUpdate: (data) => boolean,
   sendDiceRoll: (rollData) => boolean,
-  requestIceRestart: (playerId, reason) => Promise,
 }
 ```
 
 ## Fluxos Principais
-### 1) Criar sessão (Mestre)
-1. Usuário toca em "Iniciar como Mestre".
-2. Sessão é criada (sem conexões ainda).
-3. Para cada jogador:
-   a. Mestre clica "Gerar Convite"
-   b. Sistema cria RTCPeerConnection e gera offer
-   c. Código do convite é exibido para copiar
-   d. Mestre envia código via WhatsApp/Telegram
-   e. Jogador processa e envia resposta
-   f. Mestre cola resposta no app
-   g. Conexão estabelecida
 
-### 2) Entrar na sessão (Jogador)
-1. Jogador seleciona personagem da lista de `characters`. Se não houver, bloquear com CTA para criar ficha.
-2. Jogador recebe código de convite do Mestre (via WhatsApp, etc.)
-3. Jogador cola o código no app
-4. App processa offer, cria RTCPeerConnection, gera **answer**
-5. Código de resposta é exibido para copiar
-6. Jogador envia resposta para o Mestre
-7. Quando conexão estabelece, envia dados do personagem
+### Fluxo de Criação (Mestre)
+1. Mestre gera ID da sala (6 caracteres).
+2. O sistema entra em polling de participantes.
+3. Ao detectar novo participante -> Mestre cria `Offer` -> Envia via sinalização.
+4. Recebe `Answer` -> Estabelece P2P.
 
-### 3) Troca de dados em tempo real
-- **Canal único**: DataChannel `"campaign"` confiável (`ordered: true`).
-- **Mensagens JSON**: `{ type: string, payload: object, ts: number }`.
-- **Eventos mínimos**:
-  - `hello`: handshake com `playerId`, `playerName`, `characterId`, `characterSummary` (nome, nível, PV/PM atuais, ícone).
-  - `characterUpdate`: PV/PM atuais, condições, inventário resumido (nome + quantidades), último update local.
-  - `diceRoll`: resultado da rolagem (`dice`, `total`, `breakdown`, `advantage`), quem rolou.
-  - `ack`/`ping`/`pong`: manter presença e detectar desconexão.
-- **Broadcast**: Mestre pode reenviar `diceRoll` e `characterUpdate` para todos conectados; jogadores só enviam para Mestre.
+### Fluxo de Entrada (Jogador)
+1. Jogador seleciona personagem (essencial para o handshake).
+2. Digita ID da sala (6 caracteres, caixa alta).
+3. Envia `joinRoom` + `requestOffer`.
+4. Recebe `Offer` do mestre -> Gera `Answer` -> Estabelece P2P.
 
-## Estados e UI
-- **Listagem de jogadores conectados**: avatar/ícone, nome do personagem, status da conexão (`Conectado`, `Reconectando`, `Desconectado`).
-- **QR ativo**: Mestre sempre exibe QR vigente da offer para novos participantes; regenerar apenas se `RTCPeerConnection` for recriado.
-- **Feedback**: usar `Toast` para erros de câmera, falha de conexão, e confirmações.
-- **Controles do Mestre**:
-  - Botão "Ler resposta" (abre câmera) e "Inserir resposta manual" (textarea).
-  - Botão "Reiniciar sessão" que fecha todas as conexões e gera nova offer.
-  - Toggle de som/vibração para eventos de conexão/dados.
-- **Controles do Jogador**:
-  - Seletor de personagem (dropdown/cards).
-  - Botão "Atualizar estado" que envia `characterUpdate` manualmente (além dos envios automáticos em eventos locais).
+### Troca de Dados (DataChannel)
+- Canal: `sync_channel` (ordenado, confiável).
+- Formato: JSON `{ type, ...payload, timestamp }`.
+- Mensagens:
+    - `hello`: Handshake inicial com resumo do personagem.
+    - `characterUpdate`: Atualização de HP/MP/status do personagem.
+    - `diceRoll`: Resultado de rolagem de dados usando estrutura `RollRecord`.
+    - `ping/pong`: Verificação de latência e atividade.
 
-## Serviço WebRTC
-- O serviço de baixo nível (`services/webrtcSession.js`) encapsula:
-  - `createHostSession()` → retorna objeto com offer, métodos `addAnswer`, `broadcast`, `close`, eventos de conexão/mensagem.
-  - `createPlayerSession(offer)` → retorna answer, conexão com callbacks e `sendUpdate`/`sendRoll`.
-- **ConnectionProvider** (`services/ConnectionProvider.jsx`) envolve o serviço e expõe via React Context:
-  - Mantém conexão viva durante navegação
-  - Expõe estado reativo (status, players, qrData)
-  - Expõe métodos para iniciar/encerrar/interagir com sessão
-- **Views NÃO devem** importar diretamente `createHostSession`/`createPlayerSession` - usar `useConnection()`
-- Não misturar lógica WebRTC com componentes; componentes apenas reagem a callbacks e chamam métodos públicos.
-- Implementar serialização/deserialização segura (`try/catch`, validação de campos obrigatórios, tamanho máximo do QR < 4KB base64).
-- Respeitar limitações do `campanha.instructions.md`: Android only, PWA foreground, topologia estrela (Mestre central). Sem Bluetooth.
-
-## Dados e Integrações
-- **Characters**: carregar de `services` existentes (`loadCharacters`, `getCharacterById`). Nunca modificar ficha do jogador via rede; só leitura e exibição no Mestre.
-- **Rolls**: ao enviar `diceRoll`, opcionalmente salvar no histórico local (`addRollToHistory`) do emissor. Mestre não persiste rolls dos outros.
-- **IDs**: usar UUID v4 (ou já existente em personagem) como `playerId`/`characterId` para correlacionar updates.
-- **Persistência**: estado da sessão não é persistido em storage; vive apenas em memória no Provider durante a sessão.
-
-## Validações e Erros
-- Bloquear entrada se câmera não for autorizada, solicitar novamente e instruir usuário.
-- Tempo limite para conexão individual (ex: 20s) antes de exibir erro e permitir tentar novamente.
-- Se DataChannel fechar, marcar jogador como desconectado e permitir reentrada sem recriar a offer do Mestre.
-- Tratar mensagens desconhecidas com warning silencioso; nunca quebrar a UI.
-
-## Estilo e UX
-- Mobile-first, usar Bootstrap + `styles/global.css` (sem cores fora das variáveis).
-- Layout semelhante ao DiceRoller: cards compactos, botões grandes, contraste alto.
-- QR Code centralizado com bordas arredondadas e legenda curta.
-- Mantenha 2 toques para ações principais (iniciar, escanear, enviar resposta).
-
-## Segurança e Privacidade
-- Apenas conexões locais P2P; nenhuma telemetria.
-- Sanitizar JSON recebido antes de renderizar; limitar tamanho de payloads.
-- Deixar claro que iOS não é suportado.
-
-## Navegação
-- Entradas de menu: adicionar atalho na Home ("Sessão Mestre") e opção em Fichas para "Conectar ao Mestre".
-- Rotas sugeridas:
+#### Estrutura: `diceRoll`
+Enviado automaticamente pelo jogador ao rolar dados na página `DiceRoller` quando conectado à sessão.
+```json
+{
+  "type": "diceRoll",
+  "id": "uuid",
+  "playerId": "characterId",
+  "diceType": "d20",
+  "diceCount": 1,
+  "modifier": 3,
+  "rolls": [15],
+  "total": 18,
+  "description": "Teste de Furtividade",
+  "rollType": "normal|advantage|disadvantage",
+  "isCriticalSuccess": false,
+  "isCriticalFailure": false,
+  "timestamp": 1703030400000
+}
 ```
-/Home → /session/host
-/Home → /session/join
+
+#### Estrutura: `characterUpdate`
+Enviado automaticamente pelo jogador ao alterar HP/MP na página `CharacterDetail` quando conectado à sessão.
+```json
+{
+  "type": "characterUpdate",
+  "data": {
+    "characterId": "uuid",
+    "characterName": "Nome do Personagem",
+    "characterIcon": "🧙",
+    "currentHp": 25,
+    "maxHp": 30,
+    "currentMp": 10,
+    "maxMp": 15
+  },
+  "timestamp": 1703030400000
+}
 ```
+O mestre utiliza `playerId` (deviceId WebRTC) para correlacionar com os jogadores conectados, permitindo que atualizações de nome/ícone do personagem reflitam dinamicamente no histórico de rolagens.
+
+## Inconsistências Identificadas e Corrigidas
+- **Sinalização**: Removida a obrigatoriedade de QR Code para SDP. O QR Code agora é opcional e deve conter apenas o ID da sala para facilitar a entrada. O estabelecimento da conexão é via Backend.
+- **Manual Copy/Paste**: O fluxo de "copiar e colar SDP" foi descontinuado em favor da sinalização automática via servidor Flask para melhor UX.
+- **Roles**: Padronizado para `host` (mestre) e `player` (jogador).
+- **Persistência**: Anteriormente o estado era apenas em memória; agora há persistência parcial para suportar recarregamento de página.
+- **Answers Duplicados**: O `HostConnection.handleAnswer()` agora verifica o `signalingState` do RTCPeerConnection antes de processar. Se já está em `stable`, answers redundantes são ignorados silenciosamente, evitando o erro fatal "Called in wrong state: stable".
+- **Offers Duplicadas**: Tanto `HostConnection.addPeer()` quanto `PeerConnection.handleOffer()` agora verificam se já existe uma conexão em andamento (`SIGNALING`, `CONNECTING` ou `CONNECTED`) e ignoram chamadas duplicadas, evitando loops de reconexão.
+
+## Regras de Estilo e UI
+- O campo de ID da sala no jogador deve ser grande (font-size ~2.5rem), centralizado e monoespaçado.
+- Mestre deve ter botão de "Encerrar Sala" com modal de confirmação.
+- Usar variáveis de `styles/global.css` para cores de status (ex: `--success-color` para conectado).
+- Feedback sonoro/vibratório em rolagens críticas (opcional no mestre).
+
+## Regras de Negócio
+
+### Ciclo de Vida da Sessão do Mestre
+- **Sala Persistente**: A sala do mestre permanece aberta independentemente do status dos jogadores. Jogadores podem entrar e sair livremente sem afetar a sessão do mestre.
+- **Encerramento Explícito**: A sala só é encerrada quando o mestre clica em "Encerrar Sala" (com modal de confirmação) ou fecha/recarrega o app.
+- **Reconexão Automática**: Se o mestre der F5, a sessão é restaurada automaticamente via dados persistidos no localStorage (uma única vez para evitar duplicação).
+
+### Ciclo de Vida da Sessão do Jogador
+- **Seleção Obrigatória**: O jogador deve selecionar um personagem antes de entrar na sala.
+- **Reconexão via requestOffer**: Ao entrar ou reconectar, o jogador envia um sinal `requestOffer` ao mestre para disparar a criação de uma nova Offer imediatamente.
+- **Desconexão não afeta outros**: Se um jogador desconecta, apenas seu status é atualizado na lista do mestre. Os demais jogadores e o mestre não são afetados.
+
+### Estados do Host (HostConnection)
+| Estado | Significado |
+|--------|-------------|
+| `ACTIVE` | Sala aberta, pronta para receber jogadores |
+| `CONNECTED` | Pelo menos um jogador está conectado |
+| `SIGNALING` | Troca de Offer/Answer em andamento |
+| `DISCONNECTED` | Sala encerrada pelo mestre (via `endSession`) |
+
+**Importante**: O Host nunca entra em estado `FAILED` ou `DISCONNECTED` por causa de jogadores saindo. Isso garante que a sala permaneça aberta.
+
+## Segurança e Limitações
+- Android Only (PWA).
+- Dados de personagem são lidos localmente pelo jogador e enviados ao mestre; o mestre não altera a ficha original no banco local do jogador.
+- O mestre pode expulsar ou encerrar a sala, limpando os dados no servidor de sinalização via endpoint `/close`.
+

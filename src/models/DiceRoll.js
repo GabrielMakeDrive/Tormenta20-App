@@ -37,6 +37,8 @@ export class RollRecord {
     this.rollType = normalizeRollType(data.rollType);
     this.isCriticalSuccess = Boolean(data.isCriticalSuccess);
     this.isCriticalFailure = Boolean(data.isCriticalFailure);
+    // Campos opcionais para identificação do jogador em sessões de campanha
+    this.playerId = data.playerId || null;
   }
 
   toJSON() {
@@ -52,6 +54,7 @@ export class RollRecord {
       rollType: this.rollType,
       isCriticalSuccess: this.isCriticalSuccess,
       isCriticalFailure: this.isCriticalFailure,
+      playerId: this.playerId,
     };
   }
 

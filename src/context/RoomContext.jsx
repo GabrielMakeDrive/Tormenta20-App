@@ -19,7 +19,7 @@ const RoomContext = createContext(null);
 
 // Função para gerar UUID simples
 function generateUUID() {
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function (c) {
     const r = Math.random() * 16 | 0;
     const v = c === 'x' ? r : (r & 0x3 | 0x8);
     return v.toString(16);
@@ -28,9 +28,27 @@ function generateUUID() {
 
 // Provider
 export function RoomProvider({ children }) {
-  const [role, setRole] = useState(null); // 'host' | 'peer' | null
-  const [roomId, setRoomId] = useState(null);
-  const [apiToken, setApiToken] = useState(null);
+  const [role, setRoleState] = useState(() => localStorage.getItem('t20_role'));
+  const [roomId, setRoomIdState] = useState(() => localStorage.getItem('t20_roomId'));
+  const [apiToken, setApiTokenState] = useState(() => localStorage.getItem('t20_apiToken'));
+
+  const setRole = (val) => {
+    setRoleState(val);
+    if (val) localStorage.setItem('t20_role', val);
+    else localStorage.removeItem('t20_role');
+  };
+
+  const setRoomId = (val) => {
+    setRoomIdState(val);
+    if (val) localStorage.setItem('t20_roomId', val);
+    else localStorage.removeItem('t20_roomId');
+  };
+
+  const setApiToken = (val) => {
+    setApiTokenState(val);
+    if (val) localStorage.setItem('t20_apiToken', val);
+    else localStorage.removeItem('t20_apiToken');
+  };
 
   // DeviceId persistido
   const [deviceId, setDeviceId] = useState(() => {

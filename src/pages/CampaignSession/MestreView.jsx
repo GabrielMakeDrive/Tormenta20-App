@@ -13,7 +13,7 @@
  * - Host gerencia múltiplas conexões
  */
 
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header, Button, Toast, Modal } from '../../components';
 import {
@@ -38,7 +38,7 @@ function MestreView() {
   const navigate = useNavigate();
 
   // === Room Context ===
-  const { roomId } = useRoom();
+  const { roomId, role, apiToken } = useRoom();
 
   // === Conexão via Context (Provider) ===
   const {
@@ -73,8 +73,14 @@ function MestreView() {
   // Configurações
   const [settings, setSettings] = useState({ soundEnabled: true, vibrationEnabled: true });
 
+  // Modais
+  const [showCloseModal, setShowCloseModal] = useState(false);
+
   // === Personagem do Mestre ===
   const [hostCharacter, setHostCharacter] = useState(null);
+
+  // Ref para controlar se o auto-resume já foi tentado (evita chamadas duplicadas)
+  const hasResumedRef = useRef(false);
 
   // Carrega configurações e personagem do mestre
   useEffect(() => {
@@ -86,6 +92,8 @@ function MestreView() {
     const favorite = characters.find(c => c.isFavorite) || characters[0];
     setHostCharacter(favorite);
   }, []);
+
+
 
   // Feedback tátil/sonoro
   const playFeedback = useCallback((type = 'default') => {
@@ -127,14 +135,22 @@ function MestreView() {
 
     switch (message.type) {
       case 'diceRoll':
-        // Adiciona rolagem ao histórico
+        // Adiciona rolagem ao histórico usando a estrutura do RollRecord
+        // Os campos são compatíveis com RollRecord: diceType, diceCount, modifier, rolls, total, description, rollType, etc.
         const rollEntry = {
-          id: Date.now() + Math.random(), // Garante unicidade mesmo em rolagens simultâneas
-          playerId,
-          playerName: message.payload.playerName || 'Jogador',
-          playerIcon: message.payload.playerIcon || '🎲',
-          ...message.payload,
-          timestamp: message.ts || Date.now(),
+          id: message.id || Date.now() + Math.random(), // Usa ID do RollRecord se disponível
+          playerId, // Usado para correlacionar com jogador e buscar nome/ícone dinamicamente
+          // Dados do RollRecord
+          diceType: message.diceType || 'd20',
+          diceCount: message.diceCount || 1,
+          modifier: message.modifier || 0,
+          rolls: message.rolls || [],
+          total: message.total || 0,
+          description: message.description || '',
+          rollType: message.rollType || 'normal',
+          isCriticalSuccess: message.isCriticalSuccess || false,
+          isCriticalFailure: message.isCriticalFailure || false,
+          timestamp: message.timestamp || Date.now(),
         };
         setRolls(prev => [rollEntry, ...prev].slice(0, 50));
         playFeedback();
@@ -143,6 +159,12 @@ function MestreView() {
       case 'hello':
         console.log('[MestreView] Handshake recebido:', message.characterInfo?.characterName);
         // O Provider já atualiza a lista de jogadores, aqui podemos apenas dar um feedback visual se quiser
+        break;
+
+      case 'characterUpdate':
+        console.log('[MestreView] Atualização de personagem recebida:', playerId, message.data);
+        // O Provider já processa characterUpdate e atualiza a lista de jogadores automaticamente
+        // Aqui podemos dar feedback visual adicional se necessário
         break;
 
       default:
@@ -155,6 +177,29 @@ function MestreView() {
     setToast({ message: error.error || 'Erro na conexão', type: 'error' });
   }, []);
 
+  // Tenta retomar sessão se houver dados persistidos
+  useEffect(() => {
+    // Verifica se já tentou retomar para evitar chamadas duplicadas
+    if (hasResumedRef.current) return;
+
+    const shouldResume = roomId && role === 'host' && apiToken && status === SESSION_STATUS.IDLE;
+
+    if (shouldResume) {
+      hasResumedRef.current = true; // Marca como já tentado ANTES de chamar
+      console.log('[MestreView] Resumindo sessão persistida:', roomId);
+      startHostSession({
+        resumeInfo: { roomId, apiToken },
+        onPlayerConnected: handlePlayerConnected,
+        onPlayerDisconnected: handlePlayerDisconnected,
+        onMessage: handleMessage,
+        onError: handleError,
+      }).catch(err => {
+        console.error('[MestreView] Falha ao resumir sessão:', err);
+        hasResumedRef.current = false; // Permite tentar novamente em caso de erro
+      });
+    }
+  }, [roomId, role, apiToken, status, startHostSession, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleError]);
+
   // Registra callbacks no Provider quando monta ou callbacks mudam
   useEffect(() => {
     updateCallbacks({
@@ -164,6 +209,15 @@ function MestreView() {
       onError: handleError,
     });
   }, [updateCallbacks, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleError]);
+
+  /**
+   * Encerra a sala e volta
+   */
+  const handleConfirmCloseRoom = () => {
+    endSession();
+    setShowCloseModal(false);
+    navigate('/');
+  };
 
   /**
    * Inicia uma nova sessão como Mestre (via Provider)
@@ -244,7 +298,7 @@ function MestreView() {
           const pId = player.playerId || Math.random().toString();
           const pStatus = player.status || 'pending';
           const pInfo = player.info || {};
-          console.log(player);
+
           return (
             <div
               key={pId}
@@ -290,28 +344,68 @@ function MestreView() {
 
   /**
    * Renderiza histórico de rolagens
+   * Busca nome/ícone do jogador dinamicamente da lista de players para refletir atualizações em tempo real
    */
   const renderRollsHistory = () => {
     if (rolls.length === 0) return null;
+
+    /**
+     * Busca dados do jogador pelo playerId para exibição dinâmica
+     * @param {string} playerId - ID do jogador (deviceId WebRTC)
+     * @returns {Object} - { name, icon }
+     */
+    const getPlayerDisplay = (playerId) => {
+      const player = players.find(p => p.playerId === playerId);
+      return {
+        name: player?.info?.characterName || 'Jogador',
+        icon: player?.info?.characterIcon || '🎲',
+      };
+    };
+
+    /**
+     * Formata os detalhes da rolagem para exibição
+     * @param {Object} roll - Dados da rolagem
+     * @returns {string} - Detalhes formatados (ex: "[15, 8] + 3")
+     */
+    const formatRollDetails = (roll) => {
+      const rollsStr = roll.rolls && roll.rolls.length > 0
+        ? `[${roll.rolls.join(', ')}]`
+        : '';
+      const modStr = roll.modifier !== 0
+        ? ` ${roll.modifier >= 0 ? '+' : ''}${roll.modifier}`
+        : '';
+      return `${rollsStr}${modStr}`;
+    };
 
     return (
       <section className="rolls-section">
         <h4>🎲 Rolagens Recentes</h4>
         <div className="rolls-list">
-          {rolls.map(roll => (
-            <div key={roll.id} className="roll-item">
-              <span className="roll-player">{roll.playerIcon}</span>
-              <div className="roll-info">
-                <div className="roll-description">
-                  {roll.playerName}: {roll.description || roll.dice}
+          {rolls.map(roll => {
+            const playerDisplay = getPlayerDisplay(roll.playerId);
+            const rollDetails = formatRollDetails(roll);
+            const isCritical = roll.isCriticalSuccess || roll.isCriticalFailure;
+
+            return (
+              <div
+                key={roll.id}
+                className={`roll-item ${roll.isCriticalSuccess ? 'critical-success' : ''} ${roll.isCriticalFailure ? 'critical-failure' : ''}`}
+              >
+                <span className="roll-player">{playerDisplay.icon}</span>
+                <div className="roll-info">
+                  <div className="roll-description">
+                    <strong>{playerDisplay.name}</strong>: {roll.description || `${roll.diceCount}${roll.diceType}`}
+                    {roll.isCriticalSuccess && <span className="critical-badge success">🎉 Crítico!</span>}
+                    {roll.isCriticalFailure && <span className="critical-badge failure">💀 Falha!</span>}
+                  </div>
+                  <div className="roll-details">
+                    {rollDetails}
+                  </div>
                 </div>
-                <div className="roll-details">
-                  {roll.breakdown}
-                </div>
+                <div className={`roll-result ${isCritical ? 'critical' : ''}`}>{roll.total}</div>
               </div>
-              <div className="roll-result">{roll.total}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     );
@@ -406,6 +500,17 @@ function MestreView() {
 
             {/* Histórico de rolagens */}
             {renderRollsHistory()}
+
+            {/* Ações da Sessão */}
+            <div className="session-actions">
+              <Button
+                variant="danger"
+                fullWidth
+                onClick={() => setShowCloseModal(true)}
+              >
+                🛑 Encerrar Sala
+              </Button>
+            </div>
           </>
         )}
 
@@ -441,6 +546,23 @@ function MestreView() {
           onClose={() => setToast(null)}
         />
       )}
+
+      {/* Modal de confirmação para encerrar sala */}
+      <Modal
+        isOpen={showCloseModal}
+        title="Encerrar Sala?"
+        onClose={() => setShowCloseModal(false)}
+      >
+        <p>Tem certeza que deseja encerrar a sala? Todos os jogadores serão desconectados e a sala será fechada permanentemente.</p>
+        <div className="modal-footer-actions">
+          <Button variant="secondary" onClick={() => setShowCloseModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleConfirmCloseRoom}>
+            Encerrar Sessão
+          </Button>
+        </div>
+      </Modal>
     </div>
   );
 }

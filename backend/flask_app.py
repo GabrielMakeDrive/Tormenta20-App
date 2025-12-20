@@ -91,15 +91,18 @@ def after_request(response):
     return response
 
 def clean_stale_data():
-    """Opcional: Limpa mensagens antigas ou salas mortas para economizar espaço."""
-    # Em produção, isso seria um script cron, mas aqui rodamos ocasionalmente
+    """Limpa mensagens, participantes e salas inativas para economizar espaço."""
     try:
         db = get_db()
-        # Remove sinais com mais de 10 minutos
+        # Remove sinais com mais de 10 minutos (já entregues ou obsoletos)
         db.execute("DELETE FROM signals WHERE created_at < datetime('now', '-10 minutes')")
+        
+        # Remove participantes que não dão sinal de vida há mais de 1 hora
+        db.execute("DELETE FROM participants WHERE last_seen < datetime('now', '-1 hour')")
+        
         db.commit()
-    except:
-        pass
+    except Exception as e:
+        print(f"Erro na limpeza: {e}")
 
 # ==========================================
 # 3. Rotas da API
@@ -174,8 +177,8 @@ def send_signal(room_id):
     s_type = data.get('type')
     payload = data.get('payload')
 
-    if not all([from_dev, to_dev, s_type, payload]):
-        return jsonify({"error": "Missing fields"}), 400
+    if from_dev is None or to_dev is None or s_type is None or payload is None:
+        return jsonify({"error": "Missing fields (from, to, type, payload are required)"}), 400
 
     payload_json = json.dumps(payload)
 
