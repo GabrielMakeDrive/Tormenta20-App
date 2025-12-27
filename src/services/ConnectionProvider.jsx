@@ -159,7 +159,7 @@ export function ConnectionProvider({ children }) {
 
   const handlePlayerConnected = useCallback((playerId, playerData) => {
     console.log('[ConnectionProvider] Jogador conectado:', playerId);
-    
+
     setPlayers(prev => {
       const existing = prev.find(p => p.playerId === playerId);
       if (existing) {
@@ -188,7 +188,7 @@ export function ConnectionProvider({ children }) {
 
   const handlePlayerDisconnected = useCallback((playerId, playerInfo) => {
     console.log('[ConnectionProvider] Jogador desconectado:', playerId);
-    
+
     setPlayers(prev =>
       prev.map(p =>
         p.playerId === playerId
@@ -226,6 +226,12 @@ export function ConnectionProvider({ children }) {
       );
     }
 
+    // Propaga mensagens de chat para callback específico da View
+    if (message.type === 'chatMessage') {
+      console.log('[ConnectionProvider] Chat recebido de:', playerId);
+      callbacksRef.current.onChatMessage?.(playerId, message.payload);
+    }
+
     callbacksRef.current.onMessage?.(playerId, message);
   }, []);
 
@@ -237,7 +243,7 @@ export function ConnectionProvider({ children }) {
 
   const handleIceRestart = useCallback((playerId, payload) => {
     console.log('[ConnectionProvider] ICE restart solicitado:', playerId);
-    
+
     const qr = serializeForQR(payload);
     const reasonLabel = payload?.reason === 'manual'
       ? 'Reinício manual'
@@ -277,6 +283,12 @@ export function ConnectionProvider({ children }) {
 
   const handlePlayerMessage = useCallback((message) => {
     console.log('[ConnectionProvider] Mensagem do Mestre:', message.type);
+    // Propaga mensagens de chat para callback específico
+    if (message.type === 'chatMessage') {
+      console.log('[ConnectionProvider] Chat recebido do mestre');
+      callbacksRef.current.onChatMessage?.(null, message.payload);
+    }
+
     callbacksRef.current.onMessage?.(message);
   }, []);
 
@@ -369,7 +381,7 @@ export function ConnectionProvider({ children }) {
             if (signal.type === 'answer') {
               await hostConn.handleAnswer(signal.from, signal.payload);
               // Atualizar status do jogador para conectado
-              setPlayers(prev => prev.map(p => 
+              setPlayers(prev => prev.map(p =>
                 p.playerId === signal.from ? { ...p, status: 'connected' } : p
               ));
             } else if (signal.type === 'ice') {
@@ -522,7 +534,7 @@ export function ConnectionProvider({ children }) {
 
     // Remove da lista de pendentes e adiciona como jogador pendente de conexão
     setPendingInvites(prev => prev.filter(inv => inv.playerId !== playerId));
-    
+
     // Atualiza jogador como pendente
     setPlayers(prev => {
       const existing = prev.find(p => p.playerId === playerId);
@@ -551,18 +563,18 @@ export function ConnectionProvider({ children }) {
     }
 
     const invite = await sessionRef.current.createInvite();
-    
+
     // Adiciona à lista de convites pendentes
     const newInvite = {
       playerId: invite.playerId,
       offerCode: invite.offerCode,
       createdAt: Date.now(),
     };
-    
+
     setPendingInvites(prev => [...prev, newInvite]);
-    
+
     console.log('[ConnectionProvider] Convite criado:', invite.playerId);
-    
+
     return newInvite;
   }, [sessionType]);
 
@@ -641,6 +653,67 @@ export function ConnectionProvider({ children }) {
   }, [sessionType]);
 
   /**
+   * Envia mensagem de chat privada
+   * - Mestre: envia para jogador específico (targetPlayerId obrigatório)
+   * - Jogador: envia para o mestre (targetPlayerId ignorado)
+   * 
+   * @param {string} text - Texto da mensagem
+   * @param {string} senderName - Nome do remetente
+   * @param {string} senderIcon - Ícone do remetente
+   * @param {string} targetPlayerId - ID do jogador destino (apenas para Host)
+   * @returns {boolean} - true se enviou com sucesso
+   */
+  const sendChatMessage = useCallback((text, senderName, senderIcon, targetPlayerId = null) => {
+    // Validação: texto vazio
+    if (!text || !text.trim()) {
+      console.warn('[ConnectionProvider] Mensagem de chat vazia ignorada');
+      return false;
+    }
+
+    const payload = {
+      id: `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      text: text.trim().substring(0, 500), // Limite de 500 caracteres
+      senderName: senderName || 'Anônimo',
+      senderIcon: senderIcon || '💬',
+      timestamp: Date.now(),
+    };
+
+    const message = {
+      type: 'chatMessage',
+      payload,
+    };
+
+    // Host: envia para jogador específico
+    if (sessionType === SESSION_TYPES.HOST) {
+      if (!targetPlayerId) {
+        console.warn('[ConnectionProvider] Host precisa especificar targetPlayerId');
+        return false;
+      }
+      if (!hostConnectionRef.current) {
+        console.warn('[ConnectionProvider] HostConnection não disponível');
+        return false;
+      }
+      hostConnectionRef.current.sendMessage(targetPlayerId, message);
+      console.log('[ConnectionProvider] Chat enviado para jogador:', targetPlayerId);
+      return true;
+    }
+
+    // Player: envia para o mestre
+    if (sessionType === SESSION_TYPES.PLAYER) {
+      if (!peerConnectionRef.current) {
+        console.warn('[ConnectionProvider] PeerConnection não disponível');
+        return false;
+      }
+      peerConnectionRef.current.sendMessage(message);
+      console.log('[ConnectionProvider] Chat enviado para mestre');
+      return true;
+    }
+
+    console.warn('[ConnectionProvider] Nenhuma sessão ativa para enviar chat');
+    return false;
+  }, [sessionType]);
+
+  /**
    * Solicita reinício de ICE para um jogador (Mestre)
    */
   const requestIceRestart = useCallback(async (playerId, reason = 'manual') => {
@@ -667,12 +740,12 @@ export function ConnectionProvider({ children }) {
     answerQR,
     errorMessage,
     restartOffers,
-    
+
     // Flags derivadas
     isActive: status === SESSION_STATUS.ACTIVE || status === SESSION_STATUS.CONNECTED,
     isHost: sessionType === SESSION_TYPES.HOST,
     isPlayer: sessionType === SESSION_TYPES.PLAYER,
-    
+
     // Métodos
     startHostSession,
     startPlayerSession,
@@ -685,15 +758,16 @@ export function ConnectionProvider({ children }) {
     broadcast,
     sendCharacterUpdate,
     sendDiceRoll,
+    sendChatMessage,
     requestIceRestart,
     updateCallbacks,
-    
+
     // Acesso à sessão (para casos especiais)
     getSession: () => sessionRef.current,
   }), [
     sessionType, status, players, pendingInvites, answerQR, errorMessage, restartOffers,
     startHostSession, startPlayerSession, endSession, createInvite, cancelInvite, addAnswer, handleOffer,
-    sendToPlayer, broadcast, sendCharacterUpdate, sendDiceRoll, requestIceRestart,
+    sendToPlayer, broadcast, sendCharacterUpdate, sendDiceRoll, sendChatMessage, requestIceRestart,
     updateCallbacks,
   ]);
 
@@ -712,11 +786,11 @@ export function ConnectionProvider({ children }) {
  */
 export function useConnection() {
   const context = useContext(ConnectionContext);
-  
+
   if (!context) {
     throw new Error('useConnection deve ser usado dentro de um ConnectionProvider');
   }
-  
+
   return context;
 }
 

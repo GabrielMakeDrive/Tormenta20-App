@@ -120,6 +120,25 @@ Enviado automaticamente pelo jogador ao alterar HP/MP na página `CharacterDetai
 ```
 O mestre utiliza `playerId` (deviceId WebRTC) para correlacionar com os jogadores conectados, permitindo que atualizações de nome/ícone do personagem reflitam dinamicamente no histórico de rolagens.
 
+#### Estrutura: `chatMessage`
+Mensagem de chat privada entre Mestre ↔ Jogador.
+```json
+{
+  "type": "chatMessage",
+  "payload": {
+    "id": "chat-uuid",
+    "text": "Conteúdo da mensagem",
+    "senderName": "Nome do remetente",
+    "senderIcon": "🧙",
+    "timestamp": 1703030400000
+  }
+}
+```
+- **Mestre → Jogador**: O mestre seleciona um jogador na lista e envia mensagem privada para ele.
+- **Jogador → Mestre**: O jogador usa o botão flutuante de chat para enviar mensagem ao mestre.
+- **Histórico**: Mantido apenas em memória durante a sessão (máximo 100 mensagens por conversa).
+- **Indicador de não lidas**: Badge visual aparece quando há mensagens não lidas.
+
 ## Inconsistências Identificadas e Corrigidas
 - **Sinalização**: Removida a obrigatoriedade de QR Code para SDP. O QR Code agora é opcional e deve conter apenas o ID da sala para facilitar a entrada. O estabelecimento da conexão é via Backend.
 - **Manual Copy/Paste**: O fluxo de "copiar e colar SDP" foi descontinuado em favor da sinalização automática via servidor Flask para melhor UX.

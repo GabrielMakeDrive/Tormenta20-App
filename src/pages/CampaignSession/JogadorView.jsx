@@ -15,12 +15,12 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header, Button, Toast, Modal } from '../../components';
-import { 
+import { Header, Button, Toast, Modal, ChatPanel } from '../../components';
+import {
   useConnection,
   SESSION_STATUS,
   isWebRTCSupported,
-  isAndroidPlatform 
+  isAndroidPlatform
 } from '../../services';
 import { loadCharacters, loadSettings } from '../../services';
 import { calculateMaxHp, calculateMaxMp } from '../../models';
@@ -37,7 +37,7 @@ const CONNECTION_STATES = {
 
 function JogadorView() {
   const navigate = useNavigate();
-  
+
   // === Conexão via Context (Provider) ===
   const {
     status,
@@ -46,26 +46,33 @@ function JogadorView() {
     startPlayerSession,
     endSession,
     sendCharacterUpdate,
+    sendChatMessage,
     updateCallbacks,
   } = useConnection();
-  
+
   // === Estado local de UI ===
   // Estado da conexão
   const [localState, setLocalState] = useState(CONNECTION_STATES.SELECTING);
   const [errorMessage, setErrorMessage] = useState(null);
-  
+
   // Personagens e seleção
   const [characters, setCharacters] = useState([]);
   const [selectedCharacter, setSelectedCharacter] = useState(null);
-  
+
   // Entrada do ID da sala
   const [roomIdInput, setRoomIdInput] = useState('');
-  
+
   // Toast
   const [toast, setToast] = useState(null);
-  
+
   // Configurações
   const [settings, setSettings] = useState({ soundEnabled: true, vibrationEnabled: true });
+
+  // === Estado de Chat ===
+  const [chatMessages, setChatMessages] = useState([]); // Array simples (só conversa com mestre)
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const MAX_CHAT_MESSAGES = 100;
 
   // Deriva o estado de conexão
   const connectionState = (() => {
@@ -80,7 +87,7 @@ function JogadorView() {
   useEffect(() => {
     const loadedCharacters = loadCharacters();
     setCharacters(loadedCharacters);
-    
+
     // Seleciona favorito ou primeiro
     const favorite = loadedCharacters.find(c => c.isFavorite);
     if (favorite) {
@@ -88,7 +95,7 @@ function JogadorView() {
     } else if (loadedCharacters.length > 0) {
       setSelectedCharacter(loadedCharacters[0]);
     }
-    
+
     const loadedSettings = loadSettings();
     setSettings(loadedSettings);
   }, []);
@@ -110,10 +117,10 @@ function JogadorView() {
    */
   const getCharacterSummary = useCallback((character) => {
     if (!character) return null;
-    
+
     const maxHp = calculateMaxHp(character);
     const maxMp = calculateMaxMp(character);
-    
+
     return {
       characterId: character.id,
       characterName: character.name,
@@ -154,6 +161,28 @@ function JogadorView() {
     setToast({ message: error.error || 'Erro na conexão', type: 'error' });
   }, []);
 
+  /**
+   * Callback para mensagens de chat recebidas do mestre
+   */
+  const handleChatMessage = useCallback((_, messagePayload) => {
+    console.log('[JogadorView] Chat recebido do mestre:', messagePayload.text);
+
+    // Adiciona mensagem ao histórico
+    setChatMessages(prev => {
+      const newMessage = {
+        ...messagePayload,
+        isOwn: false, // Mensagem recebida
+      };
+      return [...prev, newMessage].slice(-MAX_CHAT_MESSAGES);
+    });
+
+    // Incrementa contador de não lidas se chat não está aberto
+    if (!isChatOpen) {
+      setUnreadCount(prev => prev + 1);
+      playFeedback();
+    }
+  }, [isChatOpen, playFeedback]);
+
   const handleIceRestartRequired = useCallback(() => {
     console.log('[JogadorView] Mestre solicitou reinício de ICE');
     setLocalState(CONNECTION_STATES.SELECTING);
@@ -166,10 +195,11 @@ function JogadorView() {
       onConnected: handleConnected,
       onDisconnected: handleDisconnected,
       onMessage: handleMessage,
+      onChatMessage: handleChatMessage,
       onError: handleError,
       onIceRestartRequired: handleIceRestartRequired,
     });
-  }, [updateCallbacks, handleConnected, handleDisconnected, handleMessage, handleError, handleIceRestartRequired]);
+  }, [updateCallbacks, handleConnected, handleDisconnected, handleMessage, handleChatMessage, handleError, handleIceRestartRequired]);
 
   /**
    * Conecta à sessão do Mestre
@@ -196,7 +226,7 @@ function JogadorView() {
 
       // Preparar resumo do personagem para envio
       const characterSummary = getCharacterSummary(selectedCharacter);
-      
+
       await startPlayerSession(roomIdInput.trim(), characterSummary, {
         onConnected: handleConnected,
         onDisconnected: handleDisconnected,
@@ -233,7 +263,7 @@ function JogadorView() {
       return (
         <div className="no-characters-cta">
           <p>Você precisa criar um personagem primeiro</p>
-          <Button 
+          <Button
             variant="primary"
             onClick={() => navigate('/characters/new')}
           >
@@ -266,7 +296,7 @@ function JogadorView() {
    */
   const renderCharacterStatus = () => {
     if (!selectedCharacter) return null;
-    
+
     const maxHp = calculateMaxHp(selectedCharacter);
     const maxMp = calculateMaxMp(selectedCharacter);
     const currentHp = selectedCharacter.currentHp ?? maxHp;
@@ -294,8 +324,8 @@ function JogadorView() {
 
   return (
     <div className="page campaign-session-page">
-      <Header 
-        title="Entrar na Sessão" 
+      <Header
+        title="Entrar na Sessão"
         showBack
       />
 
@@ -322,7 +352,7 @@ function JogadorView() {
                   <p className="room-id-subtitle">
                     Digite o ID da sala fornecido pelo Mestre
                   </p>
-                  
+
                   <div className="input-group">
                     <input
                       type="text"
@@ -334,7 +364,7 @@ function JogadorView() {
                   </div>
 
                   <div className="action-buttons">
-                    <Button 
+                    <Button
                       variant="primary"
                       size="large"
                       fullWidth
@@ -379,13 +409,13 @@ function JogadorView() {
             </section>
 
             <div className="action-buttons">
-              <Button 
+              <Button
                 variant="primary"
                 onClick={() => navigate('/dice', { state: { characterId: selectedCharacter?.id } })}
               >
                 🎲 Rolar Dados
               </Button>
-              <Button 
+              <Button
                 variant="danger"
                 onClick={closeConnection}
               >
@@ -409,7 +439,7 @@ function JogadorView() {
                 A conexão com o Mestre foi interrompida
               </p>
               <div className="action-buttons">
-                <Button 
+                <Button
                   variant="secondary"
                   onClick={() => navigate(-1)}
                 >
@@ -426,13 +456,13 @@ function JogadorView() {
             <h3>❌ Erro</h3>
             <p className="qr-subtitle">{errorMessage || contextErrorMessage}</p>
             <div className="action-buttons">
-              <Button 
+              <Button
                 variant="primary"
                 onClick={() => setLocalState(CONNECTION_STATES.SELECTING)}
               >
                 🔄 Tentar Novamente
               </Button>
-              <Button 
+              <Button
                 variant="secondary"
                 onClick={() => navigate(-1)}
               >
@@ -452,6 +482,61 @@ function JogadorView() {
           onClose={() => setToast(null)}
         />
       )}
+
+      {/* Botão flutuante de chat (visível apenas quando conectado) */}
+      {connectionState === CONNECTION_STATES.CONNECTED && (
+        <button
+          className="chat-fab"
+          onClick={() => {
+            setIsChatOpen(true);
+            setUnreadCount(0);
+          }}
+          title="Abrir chat com Mestre"
+        >
+          💬
+          {unreadCount > 0 && (
+            <span className="chat-fab-badge">{unreadCount}</span>
+          )}
+        </button>
+      )}
+
+      {/* Painel de Chat com o Mestre */}
+      {isChatOpen && (() => {
+        // Função para enviar mensagem
+        const handleSendMessage = (text) => {
+          const charName = selectedCharacter?.name || 'Jogador';
+          const charIcon = selectedCharacter?.icon || '👤';
+
+          // Envia via WebRTC
+          const sent = sendChatMessage(text, charName, charIcon);
+
+          if (sent) {
+            // Adiciona ao histórico local como mensagem própria
+            setChatMessages(prev => {
+              const newMessage = {
+                id: `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                text,
+                senderName: charName,
+                senderIcon: charIcon,
+                timestamp: Date.now(),
+                isOwn: true,
+              };
+              return [...prev, newMessage].slice(-MAX_CHAT_MESSAGES);
+            });
+          }
+        };
+
+        return (
+          <ChatPanel
+            isOpen={true}
+            messages={chatMessages}
+            recipientName="Mestre"
+            recipientIcon="👑"
+            onSendMessage={handleSendMessage}
+            onClose={() => setIsChatOpen(false)}
+          />
+        );
+      })()}
     </div>
   );
 }
