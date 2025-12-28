@@ -15,6 +15,55 @@
   padding-bottom: calc(var(--spacing-xl) + 80px);
 }
 
+/* Custom Room ID input style for JogadorView */
+.room-id-input {
+  font-size: 2.5rem !important;
+  text-align: center;
+  font-weight: 700;
+  letter-spacing: 0.5rem;
+  padding: var(--spacing-md) !important;
+  font-family: 'Courier New', Courier, monospace;
+  width: 100%;
+  max-width: 320px;
+  margin: var(--spacing-lg) auto !important;
+  display: block;
+  border: 2px solid var(--border-color);
+  border-radius: var(--radius-md);
+  background-color: var(--surface-color);
+  color: var(--primary-color);
+  text-transform: uppercase;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.room-id-input:focus {
+  border-color: var(--primary-color);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.2);
+}
+
+.room-id-input::placeholder {
+  letter-spacing: normal;
+  font-size: 1.5rem;
+  opacity: 0.3;
+}
+
+/* Close Session controls */
+.session-actions {
+  margin-top: var(--spacing-xl);
+  padding: var(--spacing-md);
+  border-top: 1px solid var(--border-color);
+}
+
+.modal-footer-actions {
+  display: flex;
+  gap: var(--spacing-md);
+  width: 100%;
+}
+
+.modal-footer-actions button {
+  flex: 1;
+}
+
 /* Seção de alerta de compatibilidade */
 .compatibility-warning {
   background-color: var(--warning-color);
@@ -59,7 +108,6 @@
   background-color: #ffffff;
   border-radius: var(--radius-md);
   margin: var(--spacing-md) auto;
-  max-width: 280px;
 }
 
 .qr-container svg,
@@ -170,6 +218,28 @@
   opacity: 0.7;
 }
 
+.player-card.reconnecting {
+  border-left-color: var(--primary-color);
+}
+
+.player-card.host-card {
+  border-left-color: var(--primary-color);
+  background-color: var(--primary-light);
+}
+
+.reconnect-reason {
+  margin-top: 6px;
+  font-size: 0.75rem;
+  color: var(--warning-color);
+}
+
+.player-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  width: 100%;
+  margin-top: var(--spacing-sm);
+}
+
 .player-avatar {
   font-size: 2rem;
   width: 48px;
@@ -229,6 +299,11 @@
   color: var(--danger-color);
 }
 
+.status-badge.reconnecting {
+  background-color: rgba(33, 150, 243, 0.2);
+  color: var(--primary-color);
+}
+
 .player-stats {
   display: flex;
   gap: var(--spacing-sm);
@@ -241,6 +316,55 @@
 
 .stat-mp {
   color: var(--info-color);
+}
+
+.restart-section {
+  background-color: var(--surface-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.restart-section h4 {
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+  font-size: 1rem;
+}
+
+.restart-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.restart-card {
+  padding: var(--spacing-md);
+  border-radius: var(--radius-md);
+  background-color: var(--hover-color);
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+  border: 1px solid var(--border-color);
+}
+
+.restart-header p {
+  margin: 0;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.restart-qr {
+  display: flex;
+  justify-content: center;
+  padding: var(--spacing-sm);
+  background-color: #fff;
+  border-radius: var(--radius-md);
+}
+
+.restart-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  justify-content: flex-end;
 }
 
 .empty-players {
@@ -396,6 +520,51 @@
   text-align: right;
 }
 
+.roll-result.critical {
+  color: var(--warning-color);
+  text-shadow: 0 0 4px rgba(255, 193, 7, 0.5);
+}
+
+/* Estilos para rolagens críticas */
+.roll-item.critical-success {
+  background-color: rgba(76, 175, 80, 0.15);
+  border-left: 3px solid var(--success-color);
+}
+
+.roll-item.critical-failure {
+  background-color: rgba(244, 67, 54, 0.15);
+  border-left: 3px solid var(--danger-color);
+}
+
+.roll-item.critical-success .roll-result {
+  color: var(--success-color);
+}
+
+.roll-item.critical-failure .roll-result {
+  color: var(--danger-color);
+}
+
+/* Badge de crítico/falha */
+.critical-badge {
+  display: inline-block;
+  margin-left: var(--spacing-sm);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 0.7rem;
+  font-weight: 600;
+  vertical-align: middle;
+}
+
+.critical-badge.success {
+  background-color: rgba(76, 175, 80, 0.2);
+  color: var(--success-color);
+}
+
+.critical-badge.failure {
+  background-color: rgba(244, 67, 54, 0.2);
+  color: var(--danger-color);
+}
+
 /* Input manual de texto */
 .manual-input-section {
   margin-top: var(--spacing-md);
@@ -489,9 +658,12 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+
+  0%,
+  100% {
     opacity: 1;
   }
+
   50% {
     opacity: 0.4;
   }
@@ -555,13 +727,182 @@
   font-size: 1rem;
 }
 
+/* Seção de convites pendentes */
+.invites-section {
+  background-color: var(--surface-color);
+  border-radius: var(--radius-lg);
+  padding: var(--spacing-md);
+  margin-bottom: var(--spacing-md);
+}
+
+.invites-section h4 {
+  margin-bottom: var(--spacing-md);
+  color: var(--text-primary);
+}
+
+.invites-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--spacing-sm);
+}
+
+.invite-card {
+  background-color: var(--hover-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-md);
+  border-left: 3px solid var(--warning-color);
+}
+
+.invite-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: var(--spacing-sm);
+}
+
+.invite-id {
+  font-family: monospace;
+  font-size: 0.85rem;
+  color: var(--text-primary);
+}
+
+.invite-time {
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+}
+
+.invite-actions {
+  display: flex;
+  gap: var(--spacing-sm);
+  flex-wrap: wrap;
+}
+
+.invite-actions .btn {
+  flex: 1;
+  min-width: 100px;
+}
+
+/* Exibição de código */
+.code-display {
+  background-color: var(--hover-color);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-sm);
+  margin: var(--spacing-md) 0;
+}
+
+.code-display textarea {
+  background-color: transparent;
+  border: none;
+  resize: none;
+  width: 100%;
+  color: var(--text-primary);
+}
+
 /* Responsividade */
 @media (min-width: 480px) {
   .controls-grid {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   .status-grid {
     grid-template-columns: repeat(4, 1fr);
   }
+
+  .invite-actions {
+    flex-wrap: nowrap;
+  }
+}
+
+/* ============================================
+   ESTILOS DE CHAT
+   ============================================ */
+
+/* Botão flutuante de chat (FAB) - Usado no JogadorView */
+.chat-fab {
+  position: fixed;
+  bottom: calc(80px + var(--spacing-lg));
+  /* Acima da BottomNav */
+  right: var(--spacing-lg);
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background-color: var(--primary-color);
+  color: white;
+  border: none;
+  font-size: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  cursor: pointer;
+  z-index: 100;
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.chat-fab:hover {
+  transform: scale(1.1);
+  background-color: var(--primary-dark);
+}
+
+.chat-fab:active {
+  transform: scale(0.95);
+}
+
+/* Badge de contador no FAB */
+.chat-fab-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 10px;
+  background-color: var(--danger-color);
+  color: white;
+  font-size: 0.7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+}
+
+/* Botão de chat no card do jogador - Usado no MestreView */
+.player-chat-btn {
+  background: none;
+  border: none;
+  font-size: 1.25rem;
+  cursor: pointer;
+  padding: var(--spacing-xs);
+  margin-left: var(--spacing-sm);
+  position: relative;
+  border-radius: var(--radius-sm);
+  transition: background-color 0.2s;
+}
+
+.player-chat-btn:hover {
+  background-color: var(--hover-color);
+}
+
+/* Badge de não lidas no botão de chat do jogador */
+.chat-unread-badge {
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  border-radius: 8px;
+  background-color: var(--danger-color);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Ajuste do player-card para acomodar botão de chat */
+.player-card {
+  position: relative;
 }

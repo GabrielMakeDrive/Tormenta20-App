@@ -12,7 +12,8 @@ import {
   MestreView,
   JogadorView
 } from './pages';
-import { ensurePersistentStorage } from './services';
+import { ensurePersistentStorage, ConnectionProvider } from './services';
+import { RoomProvider } from './context/RoomContext';
 import './styles/global.css';
 
 const INSTALL_PROMPT_DISMISSED_KEY = 'tormenta20_install_prompt_dismissed';
@@ -237,39 +238,43 @@ function App() {
   };
 
   return (
-    <Router basename="/Tormenta20-App">
-      <div className="app">
-        <Routes>
-          <Route path="/" element={<Home />} />
-          <Route path="/characters" element={<CharacterList />} />
-          <Route path="/characters/new" element={<CharacterCreate />} />
-          <Route path="/characters/:id/edit" element={<CharacterCreate mode="edit" />} />
-          <Route path="/characters/:id" element={<CharacterDetail />} />
-          <Route path="/characters/:id/inventory" element={<Inventory />} />
-          <Route path="/dice" element={<DiceRoller />} />
-          <Route path="/settings" element={<Settings />} />
-          <Route path="/session/host" element={<MestreView />} />
-          <Route path="/session/join" element={<JogadorView />} />
-        </Routes>
-        {showInstallPrompt && (
-          <InstallPrompt
-            installAvailable={Boolean(installPromptEvent)}
-            onInstall={handleInstallClick}
-            onDismiss={handleInstallDismiss}
-          />
-        )}
-        <BottomNav />
-        <DebugNotifier />
-        {storageWarning && (
-          <Toast
-            message={storageWarning.message}
-            type="warning"
-            duration={5000}
-            onClose={handleStorageWarningClose}
-          />
-        )}
-      </div>
-    </Router>
+    <RoomProvider>
+      <ConnectionProvider>
+        <Router basename="/Tormenta20-App">
+          <div className="app">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/characters" element={<CharacterList />} />
+              <Route path="/characters/new" element={<CharacterCreate />} />
+              <Route path="/characters/:id/edit" element={<CharacterCreate mode="edit" />} />
+              <Route path="/characters/:id" element={<CharacterDetail />} />
+              <Route path="/characters/:id/inventory" element={<Inventory />} />
+              <Route path="/dice" element={<DiceRoller />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/session/host" element={<MestreView />} />
+              <Route path="/session/join" element={<JogadorView />} />
+            </Routes>
+            {showInstallPrompt && (
+              <InstallPrompt
+                installAvailable={Boolean(installPromptEvent)}
+                onInstall={handleInstallClick}
+                onDismiss={handleInstallDismiss}
+              />
+            )}
+            <BottomNav />
+            <DebugNotifier />
+            {storageWarning && (
+              <Toast
+                message={storageWarning.message}
+                type="warning"
+                duration={5000}
+                onClose={handleStorageWarningClose}
+              />
+            )}
+          </div>
+        </Router>
+      </ConnectionProvider>
+    </RoomProvider>
   );
 }
 

@@ -1,79 +1,106 @@
 /**
  * MestreView - Tela do Mestre para gerenciar sessão de campanha
  * 
- * Fluxo:
- * 1. Usuário inicia sessão clicando em "Iniciar Sessão"
- * 2. Sistema cria RTCPeerConnection e gera offer
- * 3. Offer é serializada e exibida como QR Code
- * 4. Mestre aguarda jogadores escanearem o QR
- * 5. Para cada jogador, Mestre escaneia/insere answer
- * 6. Conexão estabelecida, jogador aparece na lista
- * 7. Mestre recebe updates de status e rolagens em tempo real
+ * Fluxo (HTTP + WebRTC):
+ * 1. Mestre inicia sessão, cria sala via backend
+ * 2. Exibe ID da sala para compartilhar com jogadores
+ * 3. Polling detecta novos jogadores e conecta automaticamente via WebRTC
+ * 4. Mestre gerencia jogadores conectados e recebe mensagens em tempo real
  * 
- * Estados:
- * - idle: aguardando iniciar sessão
- * - creating: criando sessão WebRTC
- * - active: sessão ativa, QR visível, aguardando jogadores
- * - error: erro na criação/conexão
+ * Arquitetura:
+ * - Sinalização via HTTP polling com backend Python
+ * - WebRTC P2P para sincronização de estado
+ * - Host gerencia múltiplas conexões
  */
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header, Button, Toast, QRScanner, Modal } from '../../components';
-import { 
-  createHostSession, 
-  deserializeFromQR,
+import { Header, Button, Toast, Modal, ChatPanel } from '../../components';
+import {
+  useConnection,
+  SESSION_STATUS,
   isWebRTCSupported,
-  isAndroidPlatform 
-} from '../../services/webrtcSession';
-import { loadSettings } from '../../services';
-import { QRCodeSVG } from 'qrcode.react';
+  isAndroidPlatform,
+} from '../../services';
+import { useRoom } from '../../context/RoomContext';
+import { loadSettings, loadCharacters } from '../../services';
 import './CampaignSession.css';
 
-// Estados da sessão
+// Estados da sessão (mapeia para SESSION_STATUS do Provider)
 const SESSION_STATES = {
-  IDLE: 'idle',
-  CREATING: 'creating',
-  ACTIVE: 'active',
-  ERROR: 'error',
+  IDLE: SESSION_STATUS.IDLE,
+  CREATING: SESSION_STATUS.CREATING,
+  ACTIVE: SESSION_STATUS.ACTIVE,
+  ERROR: SESSION_STATUS.ERROR,
 };
 
 function MestreView() {
   const navigate = useNavigate();
-  
-  // Estado da sessão
-  const [sessionState, setSessionState] = useState(SESSION_STATES.IDLE);
-  const [session, setSession] = useState(null);
-  const [qrData, setQrData] = useState(null);
-  const [errorMessage, setErrorMessage] = useState(null);
-  
-  // Estado dos jogadores
-  const [players, setPlayers] = useState([]);
-  
-  // Estado de rolagens recebidas
+
+  // === Room Context ===
+  const { roomId, role, apiToken } = useRoom();
+
+  // === Conexão via Context (Provider) ===
+  const {
+    status,
+    players: contextPlayers,
+    errorMessage: contextErrorMessage,
+    isActive,
+    startHostSession,
+    endSession,
+    updateCallbacks,
+    sendChatMessage,
+  } = useConnection();
+
+  // Mapeia status do contexto para estado local da sessão
+  // SESSION_STATUS.CONNECTED também deve exibir a interface ativa do mestre
+  const sessionState =
+    status === SESSION_STATUS.CONNECTED
+      ? SESSION_STATUS.ACTIVE
+      : status;
+
+  // Estado dos jogadores (do contexto)
+  const players = contextPlayers;
+
+  // Erro (do contexto)
+  const errorMessage = contextErrorMessage;
+
+  // === Estado local de UI ===
   const [rolls, setRolls] = useState([]);
-  
-  // Input manual / scanner
-  const [showScanner, setShowScanner] = useState(false);
-  const [showManualInput, setShowManualInput] = useState(false);
-  const [manualInputValue, setManualInputValue] = useState('');
-  
+
   // Toast
   const [toast, setToast] = useState(null);
-  // Fallback de cópia manual (quando Clipboard API não estiver disponível)
-  const [manualCopyText, setManualCopyText] = useState(null);
-  
+
   // Configurações
   const [settings, setSettings] = useState({ soundEnabled: true, vibrationEnabled: true });
-  
-  // Ref para sessão (evita closure stale)
-  const sessionRef = useRef(null);
 
-  // Carrega configurações
+  // Modais
+  const [showCloseModal, setShowCloseModal] = useState(false);
+
+  // === Personagem do Mestre ===
+  const [hostCharacter, setHostCharacter] = useState(null);
+
+  // === Estado de Chat ===
+  const [chatMessages, setChatMessages] = useState({}); // { [playerId]: Message[] }
+  const [unreadCounts, setUnreadCounts] = useState({}); // { [playerId]: number }
+  const [activeChatPlayerId, setActiveChatPlayerId] = useState(null); // Qual jogador está com chat aberto
+  const MAX_CHAT_MESSAGES = 100;
+
+  // Ref para controlar se o auto-resume já foi tentado (evita chamadas duplicadas)
+  const hasResumedRef = useRef(false);
+
+  // Carrega configurações e personagem do mestre
   useEffect(() => {
     const loadedSettings = loadSettings();
     setSettings(loadedSettings);
+
+    // Busca o personagem favorito para exibir como Mestre
+    const characters = loadCharacters();
+    const favorite = characters.find(c => c.isFavorite) || characters[0];
+    setHostCharacter(favorite);
   }, []);
+
+
 
   // Feedback tátil/sonoro
   const playFeedback = useCallback((type = 'default') => {
@@ -88,77 +115,65 @@ function MestreView() {
   }, [settings.vibrationEnabled]);
 
   /**
-   * Callbacks para eventos da sessão WebRTC
+   * Callbacks para eventos da sessão WebRTC (registrados no Provider)
    */
   const handlePlayerConnected = useCallback((playerId, playerData) => {
     console.log('[MestreView] Jogador conectado:', playerId, playerData);
-    
-    setPlayers(prev => {
-      const existing = prev.find(p => p.playerId === playerId);
-      if (existing) {
-        return prev.map(p => 
-          p.playerId === playerId 
-            ? { ...p, ...playerData, status: 'connected' }
-            : p
-        );
-      }
-      return [...prev, { playerId, ...playerData, status: 'connected' }];
-    });
-    
+
     playFeedback('success');
-    setToast({ 
-      message: `${playerData?.info?.characterName || 'Jogador'} conectado!`, 
-      type: 'success' 
+    setToast({
+      message: `${playerData?.info?.characterName || 'Jogador'} conectado!`,
+      type: 'success'
     });
   }, [playFeedback]);
 
   const handlePlayerDisconnected = useCallback((playerId, playerInfo) => {
     console.log('[MestreView] Jogador desconectado:', playerId);
-    
-    setPlayers(prev => 
-      prev.map(p => 
-        p.playerId === playerId 
-          ? { ...p, status: 'disconnected' }
-          : p
-      )
-    );
-    
+
     playFeedback('error');
-    setToast({ 
-      message: `${playerInfo?.characterName || 'Jogador'} desconectou`, 
-      type: 'warning' 
+    setToast({
+      message: `${playerInfo?.characterName || 'Jogador'} desconectou`,
+      type: 'warning'
     });
   }, [playFeedback]);
 
   const handleMessage = useCallback((playerId, message) => {
     console.log('[MestreView] Mensagem recebida:', playerId, message.type);
-    
+
     switch (message.type) {
-      case 'characterUpdate':
-        // Atualiza informações do jogador
-        setPlayers(prev => 
-          prev.map(p => 
-            p.playerId === playerId 
-              ? { ...p, info: { ...p.info, ...message.payload } }
-              : p
-          )
-        );
-        break;
-        
       case 'diceRoll':
-        // Adiciona rolagem ao histórico
+        // Adiciona rolagem ao histórico usando a estrutura do RollRecord
+        // Os campos são compatíveis com RollRecord: diceType, diceCount, modifier, rolls, total, description, rollType, etc.
         const rollEntry = {
-          id: Date.now(),
-          playerId,
-          playerName: message.payload.playerName || 'Jogador',
-          playerIcon: message.payload.playerIcon || '🎲',
-          ...message.payload,
-          timestamp: message.ts,
+          id: message.id || Date.now() + Math.random(), // Usa ID do RollRecord se disponível
+          playerId, // Usado para correlacionar com jogador e buscar nome/ícone dinamicamente
+          // Dados do RollRecord
+          diceType: message.diceType || 'd20',
+          diceCount: message.diceCount || 1,
+          modifier: message.modifier || 0,
+          rolls: message.rolls || [],
+          total: message.total || 0,
+          description: message.description || '',
+          rollType: message.rollType || 'normal',
+          isCriticalSuccess: message.isCriticalSuccess || false,
+          isCriticalFailure: message.isCriticalFailure || false,
+          timestamp: message.timestamp || Date.now(),
         };
         setRolls(prev => [rollEntry, ...prev].slice(0, 50));
         playFeedback();
         break;
-        
+
+      case 'hello':
+        console.log('[MestreView] Handshake recebido:', message.characterInfo?.characterName);
+        // O Provider já atualiza a lista de jogadores, aqui podemos apenas dar um feedback visual se quiser
+        break;
+
+      case 'characterUpdate':
+        console.log('[MestreView] Atualização de personagem recebida:', playerId, message.data);
+        // O Provider já processa characterUpdate e atualiza a lista de jogadores automaticamente
+        // Aqui podemos dar feedback visual adicional se necessário
+        break;
+
       default:
         console.log('[MestreView] Mensagem não tratada:', message.type);
     }
@@ -170,243 +185,282 @@ function MestreView() {
   }, []);
 
   /**
-   * Inicia uma nova sessão como Mestre
+   * Callback para mensagens de chat recebidas de jogadores
+   */
+  const handleChatMessage = useCallback((playerId, messagePayload) => {
+    console.log('[MestreView] Chat recebido de:', playerId, messagePayload.text);
+
+    // Adiciona mensagem ao histórico do jogador
+    setChatMessages(prev => {
+      const playerMessages = prev[playerId] || [];
+      const newMessage = {
+        ...messagePayload,
+        isOwn: false, // Mensagem recebida
+      };
+      // Limita a MAX_CHAT_MESSAGES
+      const updated = [...playerMessages, newMessage].slice(-MAX_CHAT_MESSAGES);
+      return { ...prev, [playerId]: updated };
+    });
+
+    // Incrementa contador de não lidas se chat não está aberto
+    if (activeChatPlayerId !== playerId) {
+      setUnreadCounts(prev => ({
+        ...prev,
+        [playerId]: (prev[playerId] || 0) + 1,
+      }));
+      playFeedback();
+    }
+  }, [activeChatPlayerId, playFeedback]);
+
+  // Tenta retomar sessão se houver dados persistidos
+  useEffect(() => {
+    // Verifica se já tentou retomar para evitar chamadas duplicadas
+    if (hasResumedRef.current) return;
+
+    const shouldResume = roomId && role === 'host' && apiToken && status === SESSION_STATUS.IDLE;
+
+    if (shouldResume) {
+      hasResumedRef.current = true; // Marca como já tentado ANTES de chamar
+      console.log('[MestreView] Resumindo sessão persistida:', roomId);
+      startHostSession({
+        resumeInfo: { roomId, apiToken },
+        onPlayerConnected: handlePlayerConnected,
+        onPlayerDisconnected: handlePlayerDisconnected,
+        onMessage: handleMessage,
+        onChatMessage: handleChatMessage,
+        onError: handleError,
+      }).catch(err => {
+        console.error('[MestreView] Falha ao resumir sessão:', err);
+        hasResumedRef.current = false; // Permite tentar novamente em caso de erro
+      });
+    }
+  }, [roomId, role, apiToken, status, startHostSession, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleChatMessage, handleError]);
+
+  // Registra callbacks no Provider quando monta ou callbacks mudam
+  useEffect(() => {
+    updateCallbacks({
+      onPlayerConnected: handlePlayerConnected,
+      onPlayerDisconnected: handlePlayerDisconnected,
+      onMessage: handleMessage,
+      onChatMessage: handleChatMessage,
+      onError: handleError,
+    });
+  }, [updateCallbacks, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleChatMessage, handleError]);
+
+  /**
+   * Encerra a sala e volta
+   */
+  const handleConfirmCloseRoom = () => {
+    endSession();
+    setShowCloseModal(false);
+    navigate('/');
+  };
+
+  /**
+   * Inicia uma nova sessão como Mestre (via Provider)
    */
   const startSession = async () => {
     if (!isWebRTCSupported()) {
-      setErrorMessage('WebRTC não suportado neste navegador');
-      setSessionState(SESSION_STATES.ERROR);
+      setToast({ message: 'WebRTC não suportado neste navegador', type: 'error' });
       return;
     }
 
-    setSessionState(SESSION_STATES.CREATING);
-    setErrorMessage(null);
-
     try {
-      const newSession = await createHostSession({
+      await startHostSession({
         onPlayerConnected: handlePlayerConnected,
         onPlayerDisconnected: handlePlayerDisconnected,
         onMessage: handleMessage,
         onError: handleError,
       });
 
-      sessionRef.current = newSession;
-      setSession(newSession);
-      setQrData(newSession.offerQR);
-      setSessionState(SESSION_STATES.ACTIVE);
-      setPlayers([]);
       setRolls([]);
-      
+
       playFeedback('success');
-      setToast({ message: 'Sessão iniciada! Aguardando jogadores...', type: 'success' });
-      
+      setToast({ message: 'Sessão iniciada! Compartilhe o ID da sala com os jogadores.', type: 'success' });
+
     } catch (error) {
       console.error('[MestreView] Erro ao criar sessão:', error);
-      setErrorMessage(error.message || 'Erro ao criar sessão');
-      setSessionState(SESSION_STATES.ERROR);
+      setToast({ message: error.message || 'Erro ao criar sessão', type: 'error' });
     }
   };
 
   /**
-   * Processa resposta (answer) de um jogador - chamado pelo scanner
-   */
-  const processAnswer = async (answerQR) => {
-    if (!sessionRef.current) {
-      setToast({ message: 'Sessão não está ativa', type: 'error' });
-      return;
-    }
-
-    // Fecha o scanner e limpa input manual
-    setShowScanner(false);
-    setShowManualInput(false);
-    setManualInputValue('');
-
-    try {
-      const answerData = deserializeFromQR(answerQR);
-      
-      if (!answerData || !answerData.answer || !answerData.playerId) {
-        throw new Error('QR Code inválido');
-      }
-
-      await sessionRef.current.addAnswer(answerData.playerId, answerData.answer);
-      
-      // Atualiza jogador como pendente até conexão completa
-      setPlayers(prev => {
-        const existing = prev.find(p => p.playerId === answerData.playerId);
-        if (!existing) {
-          return [...prev, { playerId: answerData.playerId, status: 'pending', info: null }];
-        }
-        return prev;
-      });
-      
-      setToast({ message: 'Conectando com jogador...', type: 'info' });
-      
-    } catch (error) {
-      console.error('[MestreView] Erro ao processar answer:', error);
-      setToast({ message: error.message || 'Erro ao processar resposta', type: 'error' });
-    }
-  };
-
-  /**
-   * Reinicia a sessão (fecha tudo e cria nova)
-   */
-  const restartSession = () => {
-    if (sessionRef.current) {
-      sessionRef.current.close();
-      sessionRef.current = null;
-    }
-    setSession(null);
-    setQrData(null);
-    setPlayers([]);
-    setRolls([]);
-    setSessionState(SESSION_STATES.IDLE);
-  };
-
-  /**
-   * Fecha sessão e volta
-   */
-  const closeSession = () => {
-    if (sessionRef.current) {
-      sessionRef.current.close();
-      sessionRef.current = null;
-    }
-    navigate(-1);
-  };
-
-  // Limpa sessão ao desmontar
-  useEffect(() => {
-    return () => {
-      if (sessionRef.current) {
-        sessionRef.current.close();
-      }
-    };
-  }, []);
-
-  /**
-   * Copia QR data para clipboard
-   */
-  /**
-   * Tenta copiar o QR para a área de transferência.
-   * Se a Clipboard API não estiver disponível, tenta fallback com execCommand
-   * e, por fim, mostra um modal com o texto para cópia manual.
-   */
-  const copyQRToClipboard = async () => {
-    if (!qrData) return;
-    const text = typeof qrData === 'string' ? qrData : JSON.stringify(qrData);
-
-    // Tentar Clipboard API (moderna)
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-      try {
-        await navigator.clipboard.writeText(text);
-        setToast({ message: 'Código copiado!', type: 'success' });
-        return;
-      } catch (err) {
-        console.warn('[MestreView] clipboard.writeText falhou:', err);
-        // continua para fallback
-      }
-    }
-
-    // Fallback usando textarea + execCommand
-    try {
-      const ta = document.createElement('textarea');
-      ta.value = text;
-      ta.setAttribute('readonly', '');
-      ta.style.position = 'absolute';
-      ta.style.left = '-9999px';
-      document.body.appendChild(ta);
-      ta.select();
-      const ok = document.execCommand('copy');
-      document.body.removeChild(ta);
-      if (ok) {
-        setToast({ message: 'Código copiado (fallback)!', type: 'success' });
-        return;
-      }
-    } catch (err) {
-      console.warn('[MestreView] fallback copy falhou:', err);
-    }
-
-    // Último recurso: mostrar código em modal para cópia manual
-    setManualCopyText(text);
-    setToast({ message: 'Não foi possível copiar automaticamente. Código exibido para cópia manual.', type: 'warning' });
-  };
-
-  /**
-   * Renderiza lista de jogadores conectados
+   * Renderiza a lista de jogadores/personagens conectados
    */
   const renderPlayersList = () => {
-    if (players.length === 0) {
+    // Lista final que inclui o mestre e os jogadores
+    const displayList = [];
+
+    // Adiciona o mestre como primeiro item se tiver personagem
+    // Usando blindagem total contra campos faltantes
+    if (hostCharacter) {
+      displayList.push({
+        playerId: 'host',
+        status: 'connected',
+        isHost: true,
+        info: {
+          characterName: `(Host) ${hostCharacter.name || 'Mestre'}`,
+          characterIcon: hostCharacter.icon || '💂‍♂️',
+          characterClass: hostCharacter.className || 'Mestre',
+          characterLevel: hostCharacter.level || '',
+          currentHp: hostCharacter.hp?.current,
+          maxHp: hostCharacter.hp?.max,
+          currentMp: hostCharacter.mp?.current,
+          maxMp: hostCharacter.mp?.max,
+        }
+      });
+    }
+
+    // Adiciona os demais jogadores conectados
+    if (Array.isArray(players)) {
+      const activePeers = players.filter(p => p && p.playerId !== 'host');
+      displayList.push(...activePeers);
+    }
+
+    if (displayList.length === 0) {
       return (
         <div className="empty-players">
           <div className="empty-icon">👥</div>
           <p>Nenhum jogador conectado</p>
-          <p className="text-muted">Peça para os jogadores escanearem o QR Code</p>
+          <p className="text-muted">Os jogadores aparecerão aqui ao entrar</p>
         </div>
       );
     }
 
     return (
       <div className="players-list">
-        {players.map(player => (
-          <div 
-            key={player.playerId} 
-            className={`player-card ${player.status}`}
-          >
-            <div className="player-avatar">
-              {player.info?.characterIcon || '👤'}
-            </div>
-            <div className="player-info">
-              <div className="player-name">
-                {player.info?.characterName || 'Conectando...'}
+        {displayList.map(player => {
+          if (!player) return null;
+
+          const pId = player.playerId || Math.random().toString();
+          const pStatus = player.status || 'pending';
+          const pInfo = player.info || {};
+
+          return (
+            <div
+              key={pId}
+              className={`player-card ${pStatus} ${player.isHost ? 'host-card' : ''}`}
+            >
+              <div className="player-avatar">
+                {pInfo.characterIcon || '👤'}
               </div>
-              <div className="player-details">
-                {player.info?.characterClass && player.info?.characterLevel && (
-                  <span>{player.info.characterClass} Nv.{player.info.characterLevel}</span>
+              <div className="player-info">
+                <div className="player-name">
+                  {pInfo.characterName || (pStatus === 'connected' ? 'Sincronizando...' : 'Conectando...')}
+                </div>
+                <div className="player-details">
+                  {pInfo.characterClass ? (
+                    <span>{pInfo.characterClass} {pInfo.characterLevel ? `Nv.${pInfo.characterLevel}` : ''}</span>
+                  ) : (
+                    <span className="text-muted">Aguardando dados...</span>
+                  )}
+                </div>
+              </div>
+              <div className="player-status">
+                <span className={`status-badge ${pStatus}`}>
+                  {pStatus === 'connected' ? 'Conectado' :
+                    pStatus === 'pending' || pStatus === 'connecting' ? 'Iniciando' :
+                      pStatus === 'disconnected' ? 'Offline' : 'Reconectando'}
+                </span>
+
+                {pInfo.currentHp !== undefined && pInfo.maxHp !== undefined && (
+                  <div className="player-stats">
+                    <span className="stat-hp">❤️ {pInfo.currentHp}/{pInfo.maxHp}</span>
+                    {pInfo.currentMp !== undefined && (
+                      <span className="stat-mp">💧 {pInfo.currentMp}/{pInfo.maxMp}</span>
+                    )}
+                  </div>
                 )}
               </div>
-            </div>
-            <div className="player-status">
-              <span className={`status-badge ${player.status}`}>
-                {player.status === 'connected' && 'Conectado'}
-                {player.status === 'pending' && 'Conectando'}
-                {player.status === 'disconnected' && 'Desconectado'}
-              </span>
-              {player.info?.currentHp !== undefined && (
-                <div className="player-stats">
-                  <span className="stat-hp">❤️ {player.info.currentHp}/{player.info.maxHp}</span>
-                  <span className="stat-mp">💧 {player.info.currentMp}/{player.info.maxMp}</span>
-                </div>
+
+              {/* Botão de Chat */}
+              {pStatus === 'connected' && !player.isHost && (
+                <button
+                  className="player-chat-btn"
+                  onClick={() => {
+                    setActiveChatPlayerId(pId);
+                    // Zera contador de não lidas
+                    setUnreadCounts(prev => ({ ...prev, [pId]: 0 }));
+                  }}
+                  title="Abrir chat"
+                >
+                  💬
+                  {unreadCounts[pId] > 0 && (
+                    <span className="chat-unread-badge">{unreadCounts[pId]}</span>
+                  )}
+                </button>
               )}
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     );
   };
 
   /**
    * Renderiza histórico de rolagens
+   * Busca nome/ícone do jogador dinamicamente da lista de players para refletir atualizações em tempo real
    */
   const renderRollsHistory = () => {
     if (rolls.length === 0) return null;
+
+    /**
+     * Busca dados do jogador pelo playerId para exibição dinâmica
+     * @param {string} playerId - ID do jogador (deviceId WebRTC)
+     * @returns {Object} - { name, icon }
+     */
+    const getPlayerDisplay = (playerId) => {
+      const player = players.find(p => p.playerId === playerId);
+      return {
+        name: player?.info?.characterName || 'Jogador',
+        icon: player?.info?.characterIcon || '🎲',
+      };
+    };
+
+    /**
+     * Formata os detalhes da rolagem para exibição
+     * @param {Object} roll - Dados da rolagem
+     * @returns {string} - Detalhes formatados (ex: "[15, 8] + 3")
+     */
+    const formatRollDetails = (roll) => {
+      const rollsStr = roll.rolls && roll.rolls.length > 0
+        ? `[${roll.rolls.join(', ')}]`
+        : '';
+      const modStr = roll.modifier !== 0
+        ? ` ${roll.modifier >= 0 ? '+' : ''}${roll.modifier}`
+        : '';
+      return `${rollsStr}${modStr}`;
+    };
 
     return (
       <section className="rolls-section">
         <h4>🎲 Rolagens Recentes</h4>
         <div className="rolls-list">
-          {rolls.map(roll => (
-            <div key={roll.id} className="roll-item">
-              <span className="roll-player">{roll.playerIcon}</span>
-              <div className="roll-info">
-                <div className="roll-description">
-                  {roll.playerName}: {roll.description || roll.dice}
+          {rolls.map(roll => {
+            const playerDisplay = getPlayerDisplay(roll.playerId);
+            const rollDetails = formatRollDetails(roll);
+            const isCritical = roll.isCriticalSuccess || roll.isCriticalFailure;
+
+            return (
+              <div
+                key={roll.id}
+                className={`roll-item ${roll.isCriticalSuccess ? 'critical-success' : ''} ${roll.isCriticalFailure ? 'critical-failure' : ''}`}
+              >
+                <span className="roll-player">{playerDisplay.icon}</span>
+                <div className="roll-info">
+                  <div className="roll-description">
+                    <strong>{playerDisplay.name}</strong>: {roll.description || `${roll.diceCount}${roll.diceType}`}
+                    {roll.isCriticalSuccess && <span className="critical-badge success">🎉 Crítico!</span>}
+                    {roll.isCriticalFailure && <span className="critical-badge failure">💀 Falha!</span>}
+                  </div>
+                  <div className="roll-details">
+                    {rollDetails}
+                  </div>
                 </div>
-                <div className="roll-details">
-                  {roll.breakdown}
-                </div>
+                <div className={`roll-result ${isCritical ? 'critical' : ''}`}>{roll.total}</div>
               </div>
-              <div className="roll-result">{roll.total}</div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       </section>
     );
@@ -414,20 +468,9 @@ function MestreView() {
 
   return (
     <div className="page campaign-session-page">
-      <Header 
-        title="Sessão do Mestre" 
-        showBack 
-        rightAction={
-          sessionState === SESSION_STATES.ACTIVE && (
-            <button 
-              className="btn btn-ghost btn-sm"
-              onClick={restartSession}
-              title="Reiniciar sessão"
-            >
-              🔄
-            </button>
-          )
-        }
+      <Header
+        title="Sessão do Mestre"
+        showBack
       />
 
       <main className="page-content">
@@ -447,9 +490,9 @@ function MestreView() {
                 Como Mestre, você poderá ver o status dos personagens e rolagens de dados dos jogadores conectados.
               </p>
               <div className="action-buttons">
-                <Button 
-                  variant="primary" 
-                  size="large" 
+                <Button
+                  variant="primary"
+                  size="large"
                   fullWidth
                   onClick={startSession}
                 >
@@ -461,9 +504,9 @@ function MestreView() {
             <section className="info-section">
               <div className="info-card">
                 <h4>💡 Como funciona</h4>
-                <p>1. Inicie a sessão para gerar um QR Code</p>
-                <p>2. Os jogadores escaneiam seu QR Code</p>
-                <p>3. Escaneie o QR de resposta de cada jogador</p>
+                <p>1. Inicie a sessão</p>
+                <p>2. Compartilhe o ID da sala com os jogadores</p>
+                <p>3. Os jogadores entram digitando o ID</p>
                 <p>4. Pronto! Você verá os status em tempo real</p>
               </div>
             </section>
@@ -481,117 +524,48 @@ function MestreView() {
         {/* Estado: Sessão ativa */}
         {sessionState === SESSION_STATES.ACTIVE && (
           <>
-            {/* QR Code para jogadores */}
-            <section className="qr-section">
-              <h3>📱 QR Code da Sessão</h3>
-              <p className="qr-subtitle">
-                Jogadores devem escanear este código para entrar
-              </p>
-              <div className="qr-container">
-                {qrData ? (
-                  <QRCodeSVG 
-                    value={qrData} 
-                    size={220}
-                    level="L"
-                    includeMargin={false}
-                  />
-                ) : (
-                  <div className="qr-placeholder">Gerando...</div>
-                )}
-              </div>
-              <div className="qr-actions">
-                <Button 
-                  variant="secondary" 
+            {/* ID da Sala */}
+            <section className="room-id-section">
+              <h4>🏰 Sala Criada</h4>
+              <div className="room-id-display">
+                <p>ID da Sala: <strong>{roomId}</strong></p>
+                <Button
+                  variant="secondary"
                   size="small"
-                  onClick={copyQRToClipboard}
+                  onClick={() => navigator.clipboard.writeText(roomId)}
                 >
-                  📋 Copiar código
+                  📋 Copiar ID
                 </Button>
               </div>
+              <p className="room-id-info">
+                Compartilhe este ID com os jogadores para que eles possam entrar na sessão.
+              </p>
             </section>
-
-            {/* Controles do Mestre */}
-            <section className="controls-section">
-              <h4>🎮 Adicionar Jogador</h4>
-              <div className="action-buttons">
-                <div style={{ display: 'flex', gap: '0.5rem', width: '100%' }}>
-                  <Button 
-                    variant="primary"
-                    fullWidth
-                    onClick={() => {
-                      setShowManualInput(false);
-                      setShowScanner(true);
-                    }}
-                  >
-                    📷 Escanear Resposta
-                  </Button>
-                  <Button
-                    variant="secondary"
-                    fullWidth
-                    onClick={() => {
-                      setShowScanner(false);
-                      setShowManualInput(true);
-                    }}
-                  >
-                    📝 Inserir Resposta
-                  </Button>
-                  <Button 
-                    variant="danger"
-                    onClick={closeSession}
-                  >
-                    X
-                  </Button>
-                </div>
-
-              </div>
-            </section>
-
-            {/* Entrada manual (se ativada) */}
-            {showManualInput && (
-              <div className="manual-input-section">
-                <textarea
-                  autoFocus
-                  placeholder="Cole aqui o código de resposta do jogador..."
-                  value={manualInputValue}
-                  onChange={(e) => setManualInputValue(e.target.value)}
-                  rows={5}
-                />
-                <div className="input-actions">
-                  <Button 
-                    variant="primary"
-                    onClick={() => {
-                      if (manualInputValue && manualInputValue.trim()) {
-                        processAnswer(manualInputValue.trim());
-                      }
-                    }}
-                    disabled={!manualInputValue.trim()}
-                  >
-                    Conectar
-                  </Button>
-                  <Button 
-                    variant="secondary"
-                    onClick={() => {
-                      setShowManualInput(false);
-                      setManualInputValue('');
-                    }}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </div>
-            )}
 
             {/* Lista de jogadores */}
             <section className="players-section">
               <h4>
-                <span>👥 Jogadores</span>
-                <span className="player-count">{players.filter(p => p.status === 'connected').length}</span>
+                <span>👥 Jogadores Conectados</span>
+                <span className="player-count">
+                  {players.filter(p => p && p.status === 'connected').length}
+                </span>
               </h4>
               {renderPlayersList()}
             </section>
 
             {/* Histórico de rolagens */}
             {renderRollsHistory()}
+
+            {/* Ações da Sessão */}
+            <div className="session-actions">
+              <Button
+                variant="danger"
+                fullWidth
+                onClick={() => setShowCloseModal(true)}
+              >
+                🛑 Encerrar Sala
+              </Button>
+            </div>
           </>
         )}
 
@@ -601,13 +575,13 @@ function MestreView() {
             <h3>❌ Erro</h3>
             <p className="qr-subtitle">{errorMessage}</p>
             <div className="action-buttons">
-              <Button 
+              <Button
                 variant="primary"
                 onClick={startSession}
               >
                 🔄 Tentar Novamente
               </Button>
-              <Button 
+              <Button
                 variant="secondary"
                 onClick={() => navigate(-1)}
               >
@@ -617,15 +591,6 @@ function MestreView() {
           </section>
         )}
       </main>
-
-      {/* Scanner de QR Code */}
-      {showScanner && (
-        <QRScanner
-          onScan={processAnswer}
-          onClose={() => setShowScanner(false)}
-          onError={(err) => console.warn('[MestreView] Erro no scanner:', err)}
-        />
-      )}
 
       {/* Toast de feedback */}
       {toast && (
@@ -637,56 +602,69 @@ function MestreView() {
         />
       )}
 
-      {/* Modal com o código caso copy automático falhe */}
-      {manualCopyText && (
-        <Modal
-          isOpen={!!manualCopyText}
-          title="Código da Sessão"
-          onClose={() => setManualCopyText(null)}
-        >
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
-            <textarea
-              readOnly
-              value={manualCopyText}
-              style={{ width: '100%', minHeight: 120, fontFamily: 'monospace' }}
-            />
-            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-              <Button
-                variant="primary"
-                onClick={() => {
-                  // tenta copiar de novo localmente
-                  try {
-                    const ta = document.createElement('textarea');
-                    ta.value = manualCopyText;
-                    ta.setAttribute('readonly', '');
-                    ta.style.position = 'absolute';
-                    ta.style.left = '-9999px';
-                    document.body.appendChild(ta);
-                    ta.select();
-                    const ok = document.execCommand('copy');
-                    document.body.removeChild(ta);
-                    if (ok) {
-                      setToast({ message: 'Código copiado!', type: 'success' });
-                      setManualCopyText(null);
-                      return;
-                    }
-                  } catch (err) {
-                    console.warn('[MestreView] copy manual falhou:', err);
-                  }
+      {/* Modal de confirmação para encerrar sala */}
+      <Modal
+        isOpen={showCloseModal}
+        title="Encerrar Sala?"
+        onClose={() => setShowCloseModal(false)}
+      >
+        <p>Tem certeza que deseja encerrar a sala? Todos os jogadores serão desconectados e a sala será fechada permanentemente.</p>
+        <div className="modal-footer-actions">
+          <Button variant="secondary" onClick={() => setShowCloseModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={handleConfirmCloseRoom}>
+            Encerrar Sessão
+          </Button>
+        </div>
+      </Modal>
 
-                  setToast({ message: 'Selecione e copie manualmente o texto acima.', type: 'info' });
-                }}
-              >
-                📋 Copiar
-              </Button>
+      {/* Painel de Chat com jogador selecionado */}
+      {activeChatPlayerId && (() => {
+        // Busca dados do jogador ativo
+        const activePlayer = players.find(p => p.playerId === activeChatPlayerId);
+        const playerInfo = activePlayer?.info || {};
+        const playerName = playerInfo.characterName || 'Jogador';
+        const playerIcon = playerInfo.characterIcon || '👤';
 
-              <Button variant="secondary" onClick={() => setManualCopyText(null)}>
-                Fechar
-              </Button>
-            </div>
-          </div>
-        </Modal>
-      )}
+        // Função para enviar mensagem
+        const handleSendMessage = (text) => {
+          // Prepara nome/ícone do mestre
+          const mestreName = hostCharacter?.name || 'Mestre';
+          const mestreIcon = hostCharacter?.icon || '👑';
+
+          // Envia via WebRTC
+          const sent = sendChatMessage(text, mestreName, mestreIcon, activeChatPlayerId);
+
+          if (sent) {
+            // Adiciona ao histórico local como mensagem própria
+            setChatMessages(prev => {
+              const playerMessages = prev[activeChatPlayerId] || [];
+              const newMessage = {
+                id: `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                text,
+                senderName: mestreName,
+                senderIcon: mestreIcon,
+                timestamp: Date.now(),
+                isOwn: true,
+              };
+              const updated = [...playerMessages, newMessage].slice(-MAX_CHAT_MESSAGES);
+              return { ...prev, [activeChatPlayerId]: updated };
+            });
+          }
+        };
+
+        return (
+          <ChatPanel
+            isOpen={true}
+            messages={chatMessages[activeChatPlayerId] || []}
+            recipientName={playerName}
+            recipientIcon={playerIcon}
+            onSendMessage={handleSendMessage}
+            onClose={() => setActiveChatPlayerId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }

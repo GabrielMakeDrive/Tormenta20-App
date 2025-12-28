@@ -1,4 +1,8 @@
 ---
+trigger: always_on
+---
+
+---
 applyTo: "**/pages/CampaignSession/**"
 ---
 
@@ -74,70 +78,12 @@ Toda a lógica WebRTC é encapsulada no `ConnectionProvider.jsx` no topo da árv
 
 ### Troca de Dados (DataChannel)
 - Canal: `sync_channel` (ordenado, confiável).
-- Formato: JSON `{ type, ...payload, timestamp }`.
+- Formato: JSON `{ type, payload, ts }`.
 - Mensagens:
     - `hello`: Handshake inicial com resumo do personagem.
-    - `characterUpdate`: Atualização de HP/MP/status do personagem.
-    - `diceRoll`: Resultado de rolagem de dados usando estrutura `RollRecord`.
+    - `characterUpdate`: PV, PM, Defesa e condições atuais.
+    - `diceRoll`: Resultados de dados formatados.
     - `ping/pong`: Verificação de latência e atividade.
-
-#### Estrutura: `diceRoll`
-Enviado automaticamente pelo jogador ao rolar dados na página `DiceRoller` quando conectado à sessão.
-```json
-{
-  "type": "diceRoll",
-  "id": "uuid",
-  "playerId": "characterId",
-  "diceType": "d20",
-  "diceCount": 1,
-  "modifier": 3,
-  "rolls": [15],
-  "total": 18,
-  "description": "Teste de Furtividade",
-  "rollType": "normal|advantage|disadvantage",
-  "isCriticalSuccess": false,
-  "isCriticalFailure": false,
-  "timestamp": 1703030400000
-}
-```
-
-#### Estrutura: `characterUpdate`
-Enviado automaticamente pelo jogador ao alterar HP/MP na página `CharacterDetail` quando conectado à sessão.
-```json
-{
-  "type": "characterUpdate",
-  "data": {
-    "characterId": "uuid",
-    "characterName": "Nome do Personagem",
-    "characterIcon": "🧙",
-    "currentHp": 25,
-    "maxHp": 30,
-    "currentMp": 10,
-    "maxMp": 15
-  },
-  "timestamp": 1703030400000
-}
-```
-O mestre utiliza `playerId` (deviceId WebRTC) para correlacionar com os jogadores conectados, permitindo que atualizações de nome/ícone do personagem reflitam dinamicamente no histórico de rolagens.
-
-#### Estrutura: `chatMessage`
-Mensagem de chat privada entre Mestre ↔ Jogador.
-```json
-{
-  "type": "chatMessage",
-  "payload": {
-    "id": "chat-uuid",
-    "text": "Conteúdo da mensagem",
-    "senderName": "Nome do remetente",
-    "senderIcon": "🧙",
-    "timestamp": 1703030400000
-  }
-}
-```
-- **Mestre → Jogador**: O mestre seleciona um jogador na lista e envia mensagem privada para ele.
-- **Jogador → Mestre**: O jogador usa o botão flutuante de chat para enviar mensagem ao mestre.
-- **Histórico**: Mantido apenas em memória durante a sessão (máximo 100 mensagens por conversa).
-- **Indicador de não lidas**: Badge visual aparece quando há mensagens não lidas.
 
 ## Inconsistências Identificadas e Corrigidas
 - **Sinalização**: Removida a obrigatoriedade de QR Code para SDP. O QR Code agora é opcional e deve conter apenas o ID da sala para facilitar a entrada. O estabelecimento da conexão é via Backend.

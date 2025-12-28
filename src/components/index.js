@@ -11,3 +11,4 @@ export { default as MoneyEditor } from './MoneyEditor/MoneyEditor';
 export { default as CoinRain } from './MoneyEditor/CoinRain';
 export { default as LevelUpModal } from './LevelUpModal/LevelUpModal';
 export { default as QRScanner } from './QRScanner/QRScanner';
+export { default as ChatPanel } from './ChatPanel/ChatPanel';

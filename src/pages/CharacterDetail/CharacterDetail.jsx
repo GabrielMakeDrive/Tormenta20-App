@@ -6,7 +6,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { Header, Button, Toast, MoneyEditor, Modal, LevelUpModal } from '../../components';
-import { getCharacterById, saveCharacter } from '../../services';
+import { getCharacterById, saveCharacter, useConnection, SESSION_STATUS } from '../../services';
 import { SKILLS, calculateMaxHp, calculateMaxMp, getCharacterClassDefinition, getRaceDefinition, getCharacterDisplayXp, getCharacterXpToNextLevel, getCharacterLevelFromXp, getHabilidadeById } from '../../models';
 import './CharacterDetail.css';
 
@@ -44,6 +44,10 @@ function CharacterDetail() {
   const [xpAmount, setXpAmount] = useState('0');
   const xpInputRef = useRef(null);
 
+  // === Conexão WebRTC para enviar atualizações ao mestre ===
+  const { status, isPlayer, sendCharacterUpdate } = useConnection();
+  const isConnectedToSession = isPlayer && status === SESSION_STATUS.CONNECTED;
+
   useEffect(() => {
     if (location.state?.toast) {
       setToast(location.state.toast);
@@ -74,6 +78,20 @@ function CharacterDetail() {
     const updated = { ...character, hp: { ...character.hp, current: newHp, max: maxHp } };
     setCharacter(updated);
     saveCharacter(updated);
+
+    // === Enviar atualização ao mestre se conectado à sessão ===
+    if (isConnectedToSession && sendCharacterUpdate) {
+      sendCharacterUpdate({
+        characterId: character.id,
+        characterName: character.name,
+        characterIcon: character.icon,
+        currentHp: newHp,
+        maxHp,
+        currentMp: character.mp?.current ?? calculateMaxMp(character),
+        maxMp: calculateMaxMp(character),
+      });
+      console.log('[CharacterDetail] Atualização de HP enviada ao mestre');
+    }
   };
 
   const handleMpChange = (delta) => {
@@ -84,6 +102,20 @@ function CharacterDetail() {
     const updated = { ...character, mp: { ...character.mp, current: newMp, max: maxMp } };
     setCharacter(updated);
     saveCharacter(updated);
+
+    // === Enviar atualização ao mestre se conectado à sessão ===
+    if (isConnectedToSession && sendCharacterUpdate) {
+      sendCharacterUpdate({
+        characterId: character.id,
+        characterName: character.name,
+        characterIcon: character.icon,
+        currentHp: character.hp?.current ?? calculateMaxHp(character),
+        maxHp: calculateMaxHp(character),
+        currentMp: newMp,
+        maxMp,
+      });
+      console.log('[CharacterDetail] Atualização de MP enviada ao mestre');
+    }
   };
 
   const handleAddXp = (amount) => {
@@ -98,7 +130,7 @@ function CharacterDetail() {
     const newXp = Math.max(0, currentXp + added);
     const newLevel = getCharacterLevelFromXp(newXp);
     const leveledUp = newLevel > character.level;
-    
+
     let updated = { ...character, experience: newXp, level: newLevel };
 
     if (leveledUp) {
@@ -106,20 +138,20 @@ function CharacterDetail() {
       const oldMaxMp = calculateMaxMp(character);
       const newMaxHp = calculateMaxHp(updated);
       const newMaxMp = calculateMaxMp(updated);
-      
+
       const hpDiff = newMaxHp - oldMaxHp;
       const mpDiff = newMaxMp - oldMaxMp;
 
       if (hpDiff > 0 || mpDiff > 0) {
         updated = {
           ...updated,
-          hp: { 
-            ...updated.hp, 
+          hp: {
+            ...updated.hp,
             current: (updated.hp?.current || 0) + hpDiff,
             max: newMaxHp
           },
-          mp: { 
-            ...updated.mp, 
+          mp: {
+            ...updated.mp,
             current: (updated.mp?.current || 0) + mpDiff,
             max: newMaxMp
           }
@@ -156,7 +188,7 @@ function CharacterDetail() {
 
   const handleSaveAbilities = (abilities) => {
     if (!character || !abilities || abilities.length === 0) return;
-    
+
     const newHabilidades = [...(character.habilidades || [])];
     abilities.forEach(ability => {
       if (!newHabilidades.some(h => h.id === ability.id)) {
@@ -202,16 +234,16 @@ function CharacterDetail() {
 
   return (
     <div className="page character-detail-page">
-      <Header 
-        title={character.name} 
-        showBack 
+      <Header
+        title={character.name}
+        showBack
         rightAction={
           <button className="header-btn" onClick={() => navigate(`/characters/${id}/edit`)}>
             ✏️
           </button>
         }
       />
-      
+
       <main className="page-content">
         {/* Header do Personagem */}
         <section className="character-header">
@@ -237,8 +269,8 @@ function CharacterDetail() {
               <span className="vital-value">{currentHp}/{maxHp}</span>
             </div>
             <div className="vital-bar">
-              <div 
-                className="vital-fill hp-fill" 
+              <div
+                className="vital-fill hp-fill"
                 style={{ width: `${hpPercentage}%` }}
               />
             </div>
@@ -254,8 +286,8 @@ function CharacterDetail() {
               <span className="vital-value">{currentMp}/{maxMp}</span>
             </div>
             <div className="vital-bar">
-              <div 
-                className="vital-fill mp-fill" 
+              <div
+                className="vital-fill mp-fill"
                 style={{ width: `${mpPercentage}%` }}
               />
             </div>
@@ -295,8 +327,8 @@ function CharacterDetail() {
           </div>
           <div className="stat-box">
             <span className="stat-label">T$</span>
-            <MoneyEditor 
-              value={character.money} 
+            <MoneyEditor
+              value={character.money}
               label=""
               className="stat-value"
               onSave={(newMoney) => {
@@ -345,7 +377,7 @@ function CharacterDetail() {
                   const halfLevel = Math.floor(character.level / 2);
                   const trainingBonus = trained ? (character.level >= 15 ? 6 : character.level >= 7 ? 4 : 2) : 0;
                   const bonus = halfLevel + adjustedAttr + trainingBonus;
-                  
+
                   return (
                     <button
                       key={skill.id}
@@ -397,8 +429,8 @@ function CharacterDetail() {
 
           {activeTab === 'inventory' && (
             <div className="inventory-tab">
-              <Button 
-                variant="secondary" 
+              <Button
+                variant="secondary"
                 fullWidth
                 onClick={() => navigate(`/characters/${id}/inventory`)}
               >
@@ -444,10 +476,10 @@ function CharacterDetail() {
       </main>
 
       {toast && (
-        <Toast 
-          message={toast.message} 
-          type={toast.type} 
-          onClose={() => setToast(null)} 
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
         />
       )}
 
