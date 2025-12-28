@@ -466,9 +466,7 @@ export function ConnectionProvider({ children }) {
             timestamp: Date.now(),
           });
         }
-      }, (message) => {
-        callbacksRef.current.onMessage?.(message);
-      });
+      }, handlePlayerMessage); // Usa handler interno que processa tipos de mensagem (incluindo chatMessage)
 
       peerConnectionRef.current = peerConn;
       sessionRef.current = peerConn;
@@ -520,7 +518,7 @@ export function ConnectionProvider({ children }) {
       setStatus(SESSION_STATUS.ERROR);
       throw error;
     }
-  }, [deviceId, setRoomId, setApiToken, setRole]);
+  }, [deviceId, setRoomId, setApiToken, setRole, handlePlayerMessage]);
 
   /**
    * Adiciona answer de um jogador (Mestre)

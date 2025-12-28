@@ -9,7 +9,7 @@
 
 .chat-panel {
     position: fixed;
-    bottom: 80px;
+    bottom: 100px;
     /* Acima da BottomNav */
     left: var(--spacing-md);
     right: var(--spacing-md);
