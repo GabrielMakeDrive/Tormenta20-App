@@ -15,7 +15,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Header, Button, Toast, Modal } from '../../components';
+import { Header, Button, Toast, Modal, ChatPanel } from '../../components';
 import {
   useConnection,
   SESSION_STATUS,
@@ -49,6 +49,7 @@ function MestreView() {
     startHostSession,
     endSession,
     updateCallbacks,
+    sendChatMessage,
   } = useConnection();
 
   // Mapeia status do contexto para estado local da sessão
@@ -78,6 +79,12 @@ function MestreView() {
 
   // === Personagem do Mestre ===
   const [hostCharacter, setHostCharacter] = useState(null);
+
+  // === Estado de Chat ===
+  const [chatMessages, setChatMessages] = useState({}); // { [playerId]: Message[] }
+  const [unreadCounts, setUnreadCounts] = useState({}); // { [playerId]: number }
+  const [activeChatPlayerId, setActiveChatPlayerId] = useState(null); // Qual jogador está com chat aberto
+  const MAX_CHAT_MESSAGES = 100;
 
   // Ref para controlar se o auto-resume já foi tentado (evita chamadas duplicadas)
   const hasResumedRef = useRef(false);
@@ -177,6 +184,34 @@ function MestreView() {
     setToast({ message: error.error || 'Erro na conexão', type: 'error' });
   }, []);
 
+  /**
+   * Callback para mensagens de chat recebidas de jogadores
+   */
+  const handleChatMessage = useCallback((playerId, messagePayload) => {
+    console.log('[MestreView] Chat recebido de:', playerId, messagePayload.text);
+
+    // Adiciona mensagem ao histórico do jogador
+    setChatMessages(prev => {
+      const playerMessages = prev[playerId] || [];
+      const newMessage = {
+        ...messagePayload,
+        isOwn: false, // Mensagem recebida
+      };
+      // Limita a MAX_CHAT_MESSAGES
+      const updated = [...playerMessages, newMessage].slice(-MAX_CHAT_MESSAGES);
+      return { ...prev, [playerId]: updated };
+    });
+
+    // Incrementa contador de não lidas se chat não está aberto
+    if (activeChatPlayerId !== playerId) {
+      setUnreadCounts(prev => ({
+        ...prev,
+        [playerId]: (prev[playerId] || 0) + 1,
+      }));
+      playFeedback();
+    }
+  }, [activeChatPlayerId, playFeedback]);
+
   // Tenta retomar sessão se houver dados persistidos
   useEffect(() => {
     // Verifica se já tentou retomar para evitar chamadas duplicadas
@@ -192,13 +227,14 @@ function MestreView() {
         onPlayerConnected: handlePlayerConnected,
         onPlayerDisconnected: handlePlayerDisconnected,
         onMessage: handleMessage,
+        onChatMessage: handleChatMessage,
         onError: handleError,
       }).catch(err => {
         console.error('[MestreView] Falha ao resumir sessão:', err);
         hasResumedRef.current = false; // Permite tentar novamente em caso de erro
       });
     }
-  }, [roomId, role, apiToken, status, startHostSession, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleError]);
+  }, [roomId, role, apiToken, status, startHostSession, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleChatMessage, handleError]);
 
   // Registra callbacks no Provider quando monta ou callbacks mudam
   useEffect(() => {
@@ -206,9 +242,10 @@ function MestreView() {
       onPlayerConnected: handlePlayerConnected,
       onPlayerDisconnected: handlePlayerDisconnected,
       onMessage: handleMessage,
+      onChatMessage: handleChatMessage,
       onError: handleError,
     });
-  }, [updateCallbacks, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleError]);
+  }, [updateCallbacks, handlePlayerConnected, handlePlayerDisconnected, handleMessage, handleChatMessage, handleError]);
 
   /**
    * Encerra a sala e volta
@@ -335,6 +372,24 @@ function MestreView() {
                   </div>
                 )}
               </div>
+
+              {/* Botão de Chat */}
+              {pStatus === 'connected' && !player.isHost && (
+                <button
+                  className="player-chat-btn"
+                  onClick={() => {
+                    setActiveChatPlayerId(pId);
+                    // Zera contador de não lidas
+                    setUnreadCounts(prev => ({ ...prev, [pId]: 0 }));
+                  }}
+                  title="Abrir chat"
+                >
+                  💬
+                  {unreadCounts[pId] > 0 && (
+                    <span className="chat-unread-badge">{unreadCounts[pId]}</span>
+                  )}
+                </button>
+              )}
             </div>
           );
         })}
@@ -563,6 +618,53 @@ function MestreView() {
           </Button>
         </div>
       </Modal>
+
+      {/* Painel de Chat com jogador selecionado */}
+      {activeChatPlayerId && (() => {
+        // Busca dados do jogador ativo
+        const activePlayer = players.find(p => p.playerId === activeChatPlayerId);
+        const playerInfo = activePlayer?.info || {};
+        const playerName = playerInfo.characterName || 'Jogador';
+        const playerIcon = playerInfo.characterIcon || '👤';
+
+        // Função para enviar mensagem
+        const handleSendMessage = (text) => {
+          // Prepara nome/ícone do mestre
+          const mestreName = hostCharacter?.name || 'Mestre';
+          const mestreIcon = hostCharacter?.icon || '👑';
+
+          // Envia via WebRTC
+          const sent = sendChatMessage(text, mestreName, mestreIcon, activeChatPlayerId);
+
+          if (sent) {
+            // Adiciona ao histórico local como mensagem própria
+            setChatMessages(prev => {
+              const playerMessages = prev[activeChatPlayerId] || [];
+              const newMessage = {
+                id: `chat-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                text,
+                senderName: mestreName,
+                senderIcon: mestreIcon,
+                timestamp: Date.now(),
+                isOwn: true,
+              };
+              const updated = [...playerMessages, newMessage].slice(-MAX_CHAT_MESSAGES);
+              return { ...prev, [activeChatPlayerId]: updated };
+            });
+          }
+        };
+
+        return (
+          <ChatPanel
+            isOpen={true}
+            messages={chatMessages[activeChatPlayerId] || []}
+            recipientName={playerName}
+            recipientIcon={playerIcon}
+            onSendMessage={handleSendMessage}
+            onClose={() => setActiveChatPlayerId(null)}
+          />
+        );
+      })()}
     </div>
   );
 }
