@@ -59,15 +59,15 @@ export const HABILIDADES = {
 ### Objeto Habilidade
 - `id`: Identificador único da habilidade (string, snake_case).
 - `name`: Nome de exibição (string).
-- `type`: Tipo da habilidade. Pode ser `'Habilidade base'` (habilidade automática/padrão) **ou** outro tipo específico (ex.: `'Poder'`, `'Terreno'`, `'Estilo'`, etc.).
+- `type`: Tipo da habilidade. Pode ser `'Habilidade base'` (habilidade automática/padrão) **ou** outro tipo específico (ex.: `'Poder'`, `'Terreno'`, `'Caminho'`, `'Escola'`, etc.).
   - **`Habilidade base`**: habilidade automática concedida quando aplicável (definida por `level`) — **não consome escolha**.
-  - **outros tipos** (ex.: `'Poder'`, `'Terreno'`): tipos **selecionáveis**; ao subir de nível, a interface apresenta **um passo por cada `type` elegível**. Por padrão apenas o `Poder` oferece **1 escolha**; outros tipos começam com **0 escolhas** e recebem escolhas **adicionais** somente quando houver Habilidades base com `grantsSelection` para aquele `type` cujo `level` seja menor ou igual ao nível atual do personagem.
+  - **outros tipos** (ex.: `'Poder'`, `'Terreno'`, `'Caminho'`, `'Escola'`): tipos **selecionáveis**; ao subir de nível, a interface apresenta **um passo por cada `type` elegível**. Por padrão apenas o `Poder` oferece **1 escolha**; outros tipos começam com **0 escolhas** e recebem escolhas **adicionais** somente quando houver Habilidades base com `grantsSelection` para aquele `type` cujo `level` seja menor ou igual ao nível atual do personagem.
   - **Exceção**: tipos que não são `Habilidade base` podem ter escolhas adicionais quando houver Habilidades base (com `grantsSelection`) cujo `grantsSelection` é igual ao `type` e cujo `level` seja menor ou igual ao nível atual do personagem. Cada Habilidade base assim encontrada adiciona +1 escolha para aquele `type`.
 - `level`: (Opcional) Nível em que a habilidade é adquirida (para Habilidades base) ou nível mínimo (para habilidades selecionáveis; pode ser usado para ordenação).
 - `tags`: (Opcional) Array de strings para categorização e pré-requisitos.
 - `description`: Descrição detalhada da regra (string).
 - `prerequisites`: Array de objetos definindo os requisitos.
-- `grantsSelection`: (Opcional) Se presente em uma `Habilidade base`, indica que esta habilidade concede uma escolha adicional de habilidades do `type` especificado (ex: 'Terreno').
+- `grantsSelection`: (Opcional) Se presente em uma `Habilidade base`, indica que esta habilidade concede uma escolha adicional de habilidades do `type` especificado (ex: 'Terreno', 'Caminho', 'Escola').
 
 
 ### Estrutura de Pré-requisitos
@@ -107,7 +107,22 @@ character.habilidades = [
 - `getHabilidadeById(classId, habilidadeId)`: Busca uma habilidade específica dentro da lista da classe.
 
 ## Considerações
-- Atualmente, apenas a classe **Caçador** possui habilidades cadastradas.
+- Atualmente, as classes **Caçador**, **Arcanista** e **Bárbaro** possuem habilidades cadastradas.
 - As demais classes devem seguir o novo padrão de estrutura (type, prerequisites como objetos).
 - O sistema de pré-requisitos suporta validação lógica futura baseada nos tipos definidos.
-- Todas as classes possuem uma habilidade “Poder” (Poder de Arcanista, Poder de Bárbaro, Poder de Bardo...) que permite que você escolha um poder de uma lista. Alguns poderes têm pré-requisitos. Para escolhê-los e usá-los, você deve possuir todos os requerimentos mencionados. Você pode escolher um poder no nível em que atinge seus pré-requisitos. A menos que especificado o contrário, você não pode escolher um mesmo poder mais de uma vez.
+- Todas as classes possuem uma habilidade "Poder" (Poder de Arcanista, Poder de Bárbaro, Poder de Bardo...) que permite que você escolha um poder de uma lista. Alguns poderes têm pré-requisitos. Para escolhê-los e usá-los, você deve possuir todos os requerimentos mencionados. Você pode escolher um poder no nível em que atinge seus pré-requisitos. A menos que especificado o contrário, você não pode escolher um mesmo poder mais de uma vez.
+
+## Tipos Específicos por Classe
+
+### Arcanista
+- **Caminho**: Escolha entre Bruxo, Feiticeiro ou Mago (concedido por `grantsSelection` no nível 1).
+- **Escola**: Escolas de magia (Abjuração, Adivinhação, Convocação, Encantamento, Evocação, Ilusão, Necromancia, Transmutação). Disponível através do poder "Especialista em Escola".
+- **Círculos de Magia**: Habilidades base automáticas que desbloqueiam círculos de magia (1º ao 5º) conforme o nível.
+
+### Bárbaro
+- **Fúria**: Habilidade base principal concedida no nível 1.
+- **Instinto Selvagem**: Habilidades base automáticas que escalam com o nível (3º, 9º, 15º).
+- **Redução de Dano**: Habilidades base automáticas que escalam com o nível (5º, 8º, 11º, 14º, 17º).
+
+### Caçador
+- **Terreno**: Opções de terreno para a habilidade Explorador (concedido por `grantsSelection` em múltiplos níveis).

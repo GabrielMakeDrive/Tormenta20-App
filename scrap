@@ -1,0 +1,616 @@
+*Escolas*
+Todas as magias, sejam arcanas ou divinas, pertencem a uma escola. A escolha de uma magia indica como ela utiliza e manipula energia.
+
+Escolas de magia contam como tipos de efeitos, o que indica sua relação com outros efeitos. Por exemplo, um bônus em testes de resistência contra ilusões se aplica contra quaisquer magias de ilusão.
+
+Abjuração (Abjur). Magias de proteção, que anulam outras magias ou expulsam criaturas invocadas de volta a seus planos de existência nativos.
+Adivinhação (Adiv). Magias de detecção ou que vasculham passado e futuro.
+Convocação (Conv). Magias que transportam matéria. Esse transporte é realizado através do Éter Entre Mundos; por isso, qualquer efeito que bloqueia viagens etéreas também impede convocações. Criaturas convocadas surgem em uma superfície desocupada e, quando destruídas, desaparecem e são devolvidas a seus mundos nativos.
+Encantamento (Encan). Magias que afetam a mente. Todas as magias de encantamento são efeitos mentais.
+Evocação (Evoc). Magias que manipulam ou geram energia pura. Ácido, eletricidade, fogo e frio são as energias geradas pelos quatro elementos, respectivamente terra, ar, fogo e água. Magias de fogo funcionam sob a água, mas criam vapor quente em vez de chamas abertas. Luz é energia positiva, cuja manifestação é capaz de iluminar, curar e causar dano de luz. Por fim, essência é energia mágica pura.
+Ilusão. Essas magias fazem outros perceberem algo que não existe ou ignorarem algo real. Todas as magias de ilusão são efeitos mentais.
+Necromancia (Necro). Magias que canalizam energia negativa, criando escuridão, drenando a força vital de criaturas vivas e criando mortos-vivos. Magias de necromancia são efeitos de trevas.
+Transmutação (Trans). Magias que alteram as propriedades físicas de uma criatura ou objeto.
+
+*Arcanista*
+Habilidades de Classe
+Caminho do Arcanista
+A magia é um poder incrível, capaz de alterar a realidade. Esse poder tem fontes distintas e cada uma opera conforme suas próprias regras. Escolha uma das opções a seguir. Uma vez feita, essa escolha não pode ser mudada.
+
+Bruxo. Você lança magias através de um foco — uma varinha, cajado, chapéu... Para lançar uma magia, você precisa empunhar o foco com uma mão (e gesticular com a outra) ou fazer um teste de Misticismo (CD 20 + o custo em PM da magia; se falhar, a magia não funciona, mas você gasta os PM mesmo assim). O foco tem RD 10 e PV iguais à metade dos seus, independentemente de seu material ou forma. Se for danificado, é totalmente restaurado na próxima vez que você recuperar seus PM. Se for destruído (reduzido a 0 PV), você fica atordoado por uma rodada. Você pode recuperar um foco destruído ou perdido com uma semana de trabalho e T$ 100. Seu atributo-chave para magias é Inteligência.
+Feiticeiro. Você lança magias através de um poder inato que corre em seu sangue. Escolha uma linhagem como origem de seus poderes (veja abaixo). Você recebe a herança básica da linhagem escolhida. Você não depende de nenhum item ou estudo, mas sua capacidade de aprender magias é limitada — você aprende uma magia nova a cada nível ímpar (3º, 5º, 7º etc.), em vez de a cada nível. Seu atributo-chave para magias é Carisma.
+Mago. Você lança magias através de estudo e memorização de fórmulas arcanas. Você só pode lançar magias memorizadas; suas outras magias não podem ser lançadas, mesmo que você tenha pontos de mana para tal. Para memorizar magias, você precisa estudar seu grimório por uma hora. Quando faz isso, escolhe metade das magias que conhece (por exemplo, se conhece 7 magias, escolhe 3). Essas serão suas magias memorizadas. Você pode memorizar magias uma vez por dia. Caso não possa estudar (por não ter tempo, por ter perdido o grimório...), não poderá trocar suas magias memorizadas. Um grimório tem as mesmas estatísticas de um foco (veja acima) e pode ser recuperado da mesma forma. Você começa com uma magia adicional (para um total de 4) e, sempre que ganha acesso a um novo círculo de magias, aprende uma magia adicional daquele círculo. Seu atributo-chave para magias é Inteligência.
+Magias
+Você pode lançar magias arcanas de 1º círculo. A cada quatro níveis, pode lançar magias de um círculo maior (2º círculo no 5º nível, 3º círculo no 9º nível e assim por diante). Você começa com três magias de 1º círculo. A cada nível, aprende uma magia de qualquer círculo que possa lançar. Seu atributo-chave para lançar magias é definido pelo seu Caminho (veja acima) e você soma o bônus do atributo-chave no seu total de PM.
+
+Poder de Arcanista
+No 2º nível, e a cada nível seguinte, você escolhe um dos poderes a seguir
+
+Arcano de Batalha. Quando lança uma magia, você soma seu atributo-chave na rolagem de dano.
+Aumento de Atributo. Você recebe +1 em um atributo. Você pode escolher este poder várias vezes, mas apenas uma vez por patamar para um mesmo atributo.
+Caldeirão do Bruxo. Você pode criar poções, como se tivesse o poder geral Preparar Poção. Se tiver ambos, pode criar poções de até 5º círculo. Pré-requisitos: Bruxo, treinado em Ofício (alquimista).
+Conhecimento Mágico. Você aprende duas magias de qualquer círculo que possa lançar. Você pode escolher este poder quantas vezes quiser.
+Contramágica Aprimorada. Uma vez por rodada, você pode fazer uma contramágica como uma reação. Pré-requisito: Dissipar Magia.
+Envolto em Mistério. Sua aparência e postura assombrosas o permitem manipular e assustar pessoas ignorantes ou supersticiosas. O mestre define o que exatamente você pode fazer e quem se encaixa nessa descrição. Como regra geral, você recebe +5 em Enganação e Intimidação contra pessoas não treinadas em Conhecimento ou Misticismo.
+Escriba Arcano. Você pode aprender magias copiando os textos de pergaminhos e grimórios de outros magos. Aprender uma magia dessa forma exige um dia de trabalho e T$ 250 em matérias-primas por PM necessário para lançar a magia. Assim, aprender uma magia de 3º círculo (6 PM) exige 6 dias de trabalho e o gasto de T$ 1.500. Pré-requisitos: Mago, treinado em Ofício (escriba).
+Especialista em Escola. Escolha uma escola de magia. A CD para resistir a suas magias dessa escola aumenta em +2. Pré-requisito: Bruxo ou Mago.
+Familiar. Você possui um animal de estimação mágico. Mais detalhes abaixo.
+Fluxo de Mana. Você pode manter dois efeitos sustentados ativos simultaneamente com apenas uma ação livre, pagando o custo de cada efeito separadamente. Pré-requisito: 10º nível de arcanista.
+Foco Vital. Se você estiver segurando seu foco e sofrer dano que o levaria a 0 PV ou menos, você fica com 1 PV e o foco perde PV igual ao valor excedente ou até ser destruído (se o foco for destruído, você sofre o dano excedente). Pré-requisito: Bruxo.*
+Fortalecimento Arcano. A CD para resistir a suas magias aumenta em +1. Se você puder lançar magias de 4º círculo, em vez disso ela aumenta em +2. Pré-requisito: 5º nível de arcanista.
+Herança Aprimorada. Você recebe a herança aprimorada de sua linhagem sobrenatural. Pré-requisitos: Feiticeiro, 6º nível de arcanista.
+Herança Superior. Você recebe a herança superior de sua linhagem sobrenatural. Pré-requisitos: Herança Aprimorada, 11º nível de arcanista.
+Magia Pungente. Quando lança uma magia, você pode pagar 1 PM para aumentar em +2 a CD para resistir a ela.
+Mestre em Escola. Escolha uma escola de magia. O custo para lançar magias dessa escola diminui em –1 PM. Pré-requisitos: Especialista em Escola com a escola escolhida, 8º nível de arcanista.
+Poder Mágico. Você recebe +1 ponto de mana por nível de arcanista. Quando sobe de nível, os PM que recebe por este poder aumentam de acordo. Por exemplo, se escolher este poder no 4º nível, recebe 4 PM. Quando subir para o 5º nível, recebe +1 PM e assim por diante.
+Raio Arcano. Você pode gastar uma ação padrão para causar 1d8 pontos de dano de essência num alvo em alcance curto. Esse dano aumenta em +1d8 para cada círculo de magia acima do 1º que você puder lançar. O alvo pode fazer um teste de Reflexos (CD atributo-chave) para reduzir o dano à metade. O raio arcano conta como uma magia para efeitos de habilidades e itens que beneficiem suas magias.*
+Raio Elemental. Quando usa Raio Arcano, você pode pagar 1 PM para que ele cause dano de ácido, eletricidade, fogo, frio ou trevas, a sua escolha. Se o alvo falhar no teste de Reflexos, sofre uma condição, de acordo com o tipo de dano. Ácido: vulnerável por 1 rodada. Eletricidade: ofuscado por 1 rodada. Fogo: fica em chamas. Frio: lento por 1 rodada. Trevas: não pode curar PV por 1 rodada. Pré-requisito: Raio Arcano.*
+Raio Poderoso. Os dados de dano do seu Raio Arcano aumentam para d12 e o alcance dele aumenta para médio. Pré-requisito: Raio Arcano.*
+Tinta do Mago. Você pode criar pergaminhos, como se tivesse o poder Escrever Pergaminho. Se tiver ambos, seu custo para criar pergaminhos é reduzido à metade. Pré-requisitos: Mago, treinado em Ofício (escriba).
+Alta Arcana
+No 20º nível, seu domínio das artes arcanas é total. O custo em PM de suas magias arcanas é reduzido à metade (após aplicar aprimoramentos e quaisquer outros efeitos que reduzam custo).
+
+*Bárbaro*
+Habilidades de Classe
+Fúria
+Você pode gastar 2 PM para invocar uma fúria selvagem. Você recebe +2 em testes de ataque e rolagens de dano corpo a corpo, mas não pode fazer nenhuma ação que exija calma e concentração (como usar a perícia Furtividade ou lançar magias). A cada cinco níveis, pode gastar +1 PM para aumentar os bônus em +1. A Fúria termina se, ao fim da rodada, você não tiver atacado nem sido alvo de um efeito (ataque, habilidade, magia...) hostil.
+
+Poder de Bárbaro
+No 2º nível, e a cada nível seguinte, você escolhe um dos poderes a seguir
+
+Alma de Bronze. Quando entra em fúria, você recebe uma quantidade de pontos de vida temporários igual a seu nível + sua Força.
+Aumento de Atributo. Você recebe +1 em um atributo. Você pode escolher este poder várias vezes, mas apenas uma vez por patamar para um mesmo atributo.
+Brado Assustador. Você pode gastar uma ação de movimento e 1 PM para soltar um berro feroz. Todos os inimigos em alcance curto ficam vulneráveis até o fim da cena. Pré-requisito: treinado em Intimidação. Medo.
+Crítico Brutal. Seu multiplicador de crítico com armas corpo a corpo e de arremesso aumenta em +1. Por exemplo, seu multiplicador com um machado de batalha (normalmente x3) será x4. Pré-requisito: 6º nível de bárbaro.
+Destruidor. Quando causa dano com uma arma corpo a corpo de duas mãos, você pode rolar novamente qualquer resultado 1 ou 2 das rolagens de dano da arma. Pré-requisito: For 1.
+Espírito Inquebrável. Enquanto está em fúria, você não fica inconsciente por estar com 0 PV ou menos (você ainda morre se chegar em um valor negativo igual à metade de seus pontos de vida máximos). Pré-requisito: Alma de Bronze.
+Esquiva Sobrenatural. Seus instintos são tão apurados que você consegue reagir ao perigo antes que seus sentidos o percebam. Você nunca fica surpreendido.
+Força Indomável. Você pode gastar 1 PM para somar seu nível em um teste de Força ou Atletismo. Você pode usar esta habilidade depois de rolar o dado, mas deve usá-la antes de o mestre dizer se você passou ou não.
+Frenesi. Uma vez por rodada, se estiver em fúria e usar a ação agredir para fazer um ataque corpo a corpo ou com uma arma de arremesso, você pode gastar 2 PM para fazer um ataque adicional.
+Fúria da Savana. Seu deslocamento aumenta em +3m. Quando usa Fúria, você aplica o bônus em ataque e dano também a armas de arremesso.
+Fúria Raivosa. Se sua Fúria for terminar por você não ter atacado nem sido alvo de um efeito hostil, você pode pagar 1 PM para continuar em fúria nesta rodada. Se você atacar ou for atacado na rodada seguinte, sua fúria continua normalmente.
+Golpe Poderoso. Ao acertar um ataque corpo a corpo ou com uma arma de arremesso, você pode gastar 1 PM para causar um dado extra de dano do mesmo tipo (por exemplo, com um montante, causa +1d6, para um dano total de 3d6; com um machado de guerra, causa +1d12, para um dano total de 2d12).
+Ímpeto. Você pode gastar 1 PM para aumentar seu deslocamento em +6m por uma rodada.
+Investida Imprudente. Quando faz uma investida, você pode aumentar sua penalidade na Defesa pela investida para –5 para receber um bônus de +1d12 na rolagem de dano deste ataque.
+Pele de Aço. O bônus de Pele de Ferro aumenta para +8. Pré-requisitos: Pele de Ferro, 8º nível de bárbaro.
+Pele de Ferro. Você recebe +4 na Defesa, mas apenas se não estiver usando armadura pesada.
+Sangue dos Inimigos. Enquanto está em fúria, quando faz um acerto crítico ou reduz um inimigo a 0 PV, você recebe um bônus cumulativo de +1 em testes de ataque e rolagens de dano, limitado pelo seu nível, até o fim da cena.
+Superstição. Você odeia magia, o que faz com que seja mais resistente a ela. Você recebe resistência a magia +5.
+Totem Espiritual. Você soma sua Sabedoria no seu total de pontos de mana. Escolha um animal totêmico. Você aprende e pode lançar uma magia definida pelo animal escolhido (atributo-chave Sabedoria) e pode lançá-la mesmo em fúria. Pré-requisitos: Sab 1, 4º nível de bárbaro.*
+Vigor Primal. Você pode gastar uma ação de movimento e uma quantidade de PM limitada por sua Constituição. Para cada PM que gastar, você recupera 1d12 pontos de vida.
+
+Publicidade
+Instinto Selvagem
+No 3º nível, você recebe +1 em rolagens de dano, Percepção e Reflexos. A cada seis níveis, esse bônus aumenta em +1
+
+Redução de Dano
+A partir do 5º nível, graças a seu vigor e força de vontade, você ignora parte de seus ferimentos. Você recebe redução de dano 2 (todo dano que sofre é reduzido em 2). A cada três níveis, sua RD aumenta em 2, até um máximo de RD 10 no 17º nível.
+
+Fúria Titânica
+No 20º nível, o bônus que você recebe nos testes de ataque e rolagens de dano quando usa Fúria é dobrado. Por exemplo, se gastar 5 PM, em vez de um bônus de +5, recebe um bônus de +10.
+
+*Magias*
+Lista de Magias
+1° Círculo
+Arcanas
+Abjur
+
+Alarme. Avisa quando alguém invadir uma área protegida.
+Armadura Arcana. Aumenta sua Defesa.
+Armadura Gélida (DB). Esta magia cria uma grossa armadura feita de gelo, protegendo o corpo do usuário, que sofre todos os efeitos de ficar congelado, menos a paralisia.
+Resistência a Energia. Fornece resistência contra um tipo de energia a sua escolha.
+Tranca Arcana. Tranca um item que possa ser aberto ou fechado.
+Ventania Mística (DB). Você conjura ventos fortes repletos de magia, limpando condições das criaturas dentro da área.
+Adiv
+
+Aviso. Envia um alerta telepático para uma criatura.
+Compreensão. Você entende qualquer coisa escrita ou falada e pode ouvir pensamentos.
+Concentração de Combate. Ao atacar, você pode rolar dois dados e ficar com o melhor.
+Descobrir Fraqueza (DH). Você analisa uma criatura em busca de pontos fracos e outras características.
+Farejar Fortuna (DH). Você descobre se existe algum tesouro em alcance longo.
+Percepção Rubra (DH). Esta magia faz o conjurador adquirir, por algum tempo, a estranha percepção de tempo dos lefeu — que permite ver alguns momentos no futuro.
+Visão Mística. Você pode ver auras mágicas.
+Conv
+
+Açoite Flamejante (AA). Uma língua de fogo puro, semelhante a um chicote, surge em sua mão.
+Área Escorregadia. Criaturas na área podem cair ou objeto afetado pode ser derrubado.
+Arsenal Mágico (RG). Você faz surgir uma arma mágica corpo a corpo em uma mão livre.
+Assobio Perigoso (DH). Conjura um grupo de criaturas agressivas que imediatamente atacam quem está por perto… Inclusive o conjurador e seus aliados!
+Conjurar Monstro. Convoca um monstro sob seu comando.
+Espírito Balístico (DH). Esta magia invoca um pequeno espírito feito de energia com aparência a sua escolha em um espaço desocupado.
+Névoa. Cria uma névoa que oferece camuflagem.
+Nuvem Tempestuosa (DB). Você cria uma nuvem espessa carregada com eletricidade.
+Teia. Criaturas na área ficam enredadas.
+Encan
+
+Adaga Mental. Alvo sofre dano mental e pode ficar pasmo.
+Discrição (DH). Esta magia torna a aparência do alvo desinteressante, como se ele fosse parte da paisagem.
+Enfeitiçar. Alvo se torna prestativo e pode realizar um pedido seu.
+Hipnotismo. Alvos ficam fascinados.
+Sono. Alvo fica fatigado ou cai em um sono profundo.
+Evoc
+
+Armadura Elemental (DH). Uma aura faiscante de ácido, eletricidade, fogo ou frio emana de seu corpo.
+Detonação Congelante (DB). Você emite uma onda de frio extremo que cobre a área de gelo.
+Dardo Gélido (AA). Você dispara um dardo de neve e gelo contra o alvo.
+Explosão de Chamas. Cone causa dano de fogo.
+Flecha de Luz (DH). Esta magia lança uma flecha luminosa contra o alvo.
+Gêiser Cáustico (DB). O solo explode em ácido corrosivo.
+Jato Corrosivo (AA). Você dispara um jato de ácido corrosivo de suas mãos.
+Luz. Objeto ilumina como uma tocha.
+Seta Infalível de Talude. Dispara setas de energia que acertam automaticamente.
+Toque Chocante. Toque causa dano de eletricidade.
+Ilusão
+
+Criar Ilusão. Cria uma ilusão visual ou sonora.
+Distração Fugaz (DH). Busca algo de grande interesse pessoal na memória do alvo e produz uma breve ilusão disso.
+Disfarce Ilusório. Muda a aparência de uma ou mais criaturas.
+Imagem Espelhada. Cria duplicatas para confundir os inimigos, oferecendo bônus na Defesa.
+Leque Cromático. Criaturas na área ficam ofuscadas ou atordoadas.
+Mensagem Secreta (RG). Esta magia permite escrever um texto sobre um objeto.
+Necro
+
+Amedrontar. O alvo fica abalado ou apavorado.
+Aura de Morte (DH). Uma aura de frio necrótico emana a partir do seu corpo.
+Chicote de Trevas (RG). Você faz surgir um chicote sombrio em uma das mãos.
+Escuridão. Objeto emana uma área de escuridão.
+Raio do Enfraquecimento. O alvo fica fatigado ou vulnerável.
+Vitalidade Fantasma. Você recebe pontos de vida temporários.
+Trans
+
+Arma Mágica. Arma recebe bônus ou poderes mágicos.
+Maaais Klunc (DH). Você adquire uma fantástica Força +10.
+Máquina de Combate (DH). Energiza a fonte de energia de um golem ou outro construto, sobrecarregando-a temporariamente.
+Ossos de Adamante (DH). O alvo recebe redução de impacto 5 e fortificação 25%.
+Piscar (DH). Você pisca entre o Plano material e o etéreo.
+Poção Explosiva (DH). Transforma o conteúdo de uma poção em uma substância volátil e explosiva.
+Primor Atlético. Alvo recebe bônus no deslocamento e em testes de Atletismo.
+Punho de Mitral (DH). Transforma uma de suas mãos em mitral, tornando-a prateada como esse metal
+Queda Suave. Alvo cai lentamente.
+Toque do Horizonte (DH). Melhora a precisão da arma, aumentando seu alcance em um passo.
+Transmutar Objetos. Pode consertar ou fabricar um objeto temporário.
+
+Publicidade
+Divinas
+Abjur
+
+Armadura Gélida (DB). Esta magia cria uma grossa armadura feita de gelo, protegendo o corpo do usuário, que sofre todos os efeitos de ficar congelado, menos a paralisia.
+Escapatória de Hyninn (DH). Você adquire uma agilidade espantosa para se esquivar de algum perigo súbito.
+Escudo da Fé. Protege uma criatura.
+Frescor de Lena (DH). Você emana uma aura refrescante, que envolve você e aliados na área.
+Instante Estoico (DH). Invocando a proteção de Khalmyr, você resiste a agressões potencialmente perigosas.
+Orbe do Oceano (DH). Você cria um globo protetor de água salgada que ocupa 1 quadrado e o acompanha, fornecendo a você camuflagem leve e cobertura leve.
+Proteção de Tauron (DH). Quando a magia é lançada, luz sagrada envolve o alvo, que se torna um “protegido”.
+Proteção Divina. Alvo recebe bônus em testes de resistência.
+Resistência a Energia. Fornece resistência contra um tipo de energia a sua escolha.
+Santuário. Inimigos devem passar num teste de Vontade para lhe atacar.
+Suporte Ambiental. Ignora efeitos de calor e frio, e pode respirar na água.
+Ventania Mística (DB). Você conjura ventos fortes repletos de magia, limpando condições das criaturas dentro da área.
+Adiv
+
+Aviso. Envia um alerta telepático para uma criatura.
+Compreensão. Você entende qualquer coisa escrita ou falada e pode ouvir pensamentos.
+Detectar Ameaças. Detecta a presença, quantidade e poder de criaturas na área.
+Futuro Melhor (DH). Esta magia permite enxergar todas as possibilidades e consequências de um evento muito recente, ainda a tempo de escolher o melhor caminho.
+Orientação. Alvo recebe bônus nos testes de perícia.
+Percepção Rubra (DH). Esta magia faz o conjurador adquirir, por algum tempo, a estranha percepção de tempo dos lefeu — que permite ver alguns momentos no futuro.
+Sigilo de Sszzaas (DH). Pela duração da magia, quaisquer criaturas que fizerem testes de perícia para obter alguma informação a seu respeito sofrem redutor.
+Visão Mística. Você pode ver auras mágicas.
+Conv
+
+Arma Espiritual. Cria uma arma de energia que ataca seus inimigos.
+Arsenal Mágico (RG). Você faz surgir uma arma mágica corpo a corpo em uma mão livre.
+Caminhos da Natureza. Convoca um espírito da natureza que guia você e seus aliados em terreno selvagem.
+Criar Elementos. Cria uma quantidade Minúscula de água, ar, fogo ou terra.
+Névoa. Cria uma névoa que oferece camuflagem.
+Posse de Arsenal (DH). Esta magia cria um vínculo poderoso entre você e seus pertences, dificultando sua perda ou roubo.
+Encan
+
+Acalmar Animal. Um animal fica prestativo.
+Bênção. Fornece bônus em ataques e dano.
+Comando. Força o alvo a obedecer a uma ordem.
+Discrição (DH). Esta magia torna a aparência do alvo desinteressante, como se ele fosse parte da paisagem.
+Euforia de Valkaria (DH). Esta magia enche o alvo de disposição, apagando o medo (e bom senso) em seu coração e impedindo-o de ser intimidado por desafios árduos.
+Paixão de Marah (DH). Você é cercado por uma aura de magnetismo pessoal que o torna mais interessante e atraente aos olhos dos demais.
+Tranquilidade. Acalma criaturas na área.
+Voz da Razão (DH). Iluminada por Tanna-Toh, sua mente transborda de argumentos e informações.
+Evoc
+
+Bofetada de Nimb (DH). Uma mão mágica surge diante do alvo e o esbofeteia na face, ou em outra parte vulnerável, desaparecendo em seguida.
+Chuva (DB). A área é coberta por nuvens, que derramam uma chuva fraca.
+Consagrar. Abençoa a área, maximizando efeitos de cura.
+Curar Ferimentos. Seu toque recupera pontos de vida.
+Despedaçar. Som alto e agudo causa atordoamento e dano de impacto.
+Flecha de Luz (DH). Esta magia lança uma flecha luminosa contra o alvo.
+Fúria dos Antepassados (DH). Esta magia invoca a alma de um antepassado da vítima para acusá-la de erros passados e trazer punição.
+Luz. Objeto ilumina como uma tocha.
+Poder de Kallyadranoch (DH). Você manifesta uma pequena parte da força e majestade das grandes feras dracônicas: a capacidade de criar elementos em sua forma mais pura.
+Siroco de Azgher (DH). Invocando a fúria do Deus-Sol, você cria uma breve e focada tempestade de areia, capaz de esfolar a carne dos ossos.
+Sorriso da Fortuna (DH). Permite manipular os resultados de um jogo de azar.
+Ilusão
+
+Perturbação Sombria (DH). Com a proteção de Tenebra, você emana uma aura de sombras com 6m de raio.
+Necro
+
+Chicote de Trevas (RG). Você faz surgir um chicote sombrio em uma das mãos.
+Escuridão. Objeto emana uma área de escuridão.
+Execução de Thwor (DH). Se acertar seu próximo ataque no alvo, ele se torna um acerto crítico.
+Infligir Ferimentos. Seu toque causa dano de trevas e pode deixar abalado.
+Infortúnio de Sszzaas (DH). Esta maldição menor reduz a resiliência da vítima, tornando-a mais suscetível a efeitos nocivos.
+Perdição. Inimigos sofrem penalidade nos ataques e danos.
+Profanar. Conspurca a área, dobrando o dano de trevas.
+Trans
+
+Abençoar Alimentos. Purifica refeição, que também fornece bônus temporários.
+Arma de Jade (DH). Transfere temporariamente para uma arma as qualidades místicas do jade, um raro material de Tamu-ra.
+Arma Mágica. Arma recebe bônus ou poderes mágicos.
+Arsenal de Allihanna (DH). Você invoca uma arma a sua escolha, em uma versão de madeira mágica.
+Armamento da Natureza. Arma natural ou primitiva causa dano como se fosse maior.
+Controlar Plantas. A vegetação da área enreda criaturas.
+Magia Dadivosa (DH). Receba PM temporário que só pode ser gasto em aprimoramentos de magias.
+Toque de Megalokk (DH). Você se transforma em uma criatura do tipo monstro.
+
+Publicidade
+2° Círculo
+Arcanas
+Abjur
+
+Campo de Força. Cria uma película protetora que absorve dano.
+Desfazer Engenhoca (DH). Você desfaz os efeitos ativos de engenhocas, como se sua duração tivesse acabado.
+Dissipar Magia. Cancela os efeitos de uma magia ativa em um alvo ou área
+Refúgio. Cria um domo para abrigar o conjurador e seus aliados.
+Runa de Proteção. Runa protege passagem ou objeto.
+Adiv
+
+Ligação Telepática. Estabelece um vínculo telepático entre duas ou mais criaturas.
+Localização. Determina em que direção está um objeto ou criatura a sua escolha.
+Mapear. Traça um esboço de mapa dos arredores.
+Viagem Onírica (DH). Você se torna um espírito incorpóreo com deslocamento de voo 18m.
+Conv
+
+Amarras Etéreas. Laços de energia prendem o alvo.
+Disco Flutuante (RG). Você cria um disco de energia côncavo que pode carregar até 20 espaços.
+Invocar Fagulha Elemental (AA). Você transforma uma porção de um elemento inerte em uma criatura elemental Pequena do tipo do elemento alvo.
+Momento de Tormenta (AA). Uma nuvem rubra surge acima do conjurador.
+Montaria Arcana. Invoca uma criatura grande que serve como montaria.
+Salto Dimensional. Teletransporta você e outras criaturas para um ponto dentro do alcance.
+Servos Invisíveis. Seres invisíveis realizam tarefas para você.
+Transposição (DH). Teletransporta duas criaturas, incluindo seu equipamento, fazendo com que troquem de lugar imediatamente.
+Encan
+
+Desafio Corajoso (DH). Esta magia cria uma aura de influência de 9m ao redor do alvo
+Desespero Esmagador. Criaturas na área perdem a vontade de lutar.
+Marca da Obediência. Símbolo mágico obriga o alvo a cumprir uma ordem.
+Sussurros Insanos. Deixa o alvo confuso.
+Evoc
+
+Bola de Fogo. Esfera incandescente explode causando dano em todas as criaturas na área.
+Emular Magia (DH). Você pode lançar uma única magia que tenha visto ser lançada em alcance curto desde sua última rodada.
+Flecha Ácida. Dispara um projétil de ácido que corrói armaduras e outros objetos.
+Fúria da Pedra (RG). Você faz o solo explodir, projetando pedaços de pedra e lava que causam dano.
+Necrofogo (DB). Você toca o chão, fazendo-o irromper em chamas profanas. Criaturas na área sofrem pontos de dano de fogo e trevas.
+Relâmpago. Causa dano de eletricidade em criaturas numa linha.
+Sopro das Uivantes. Explosão em cone causa dano de frio e empurra alvos.
+Ilusão
+
+Aparência Perfeita. Aumenta o Carisma e concede bônus em perícias sociais.
+Camuflagem Ilusória. A imagem do alvo fica distorcida, concedendo camuflagem.
+Esculpir Sons. Altera os sons emitidos pelos alvos.
+Invisibilidade. Torna-se invisível por um curto período.
+Necro
+
+Conjurar Mortos-Vivos. Ergue mortos-vivos para lutarem por você.
+Crânio Voador de Vladislav. Crânio flutuante causa dano em um alvo.
+Toque Vampírico. Toque causa dano e absorve pontos de vida.
+Trans
+
+Alterar Tamanho. Aumenta ou diminui o tamanho de objetos e criaturas.
+Conjurar Armadilha (DH). Modifica o terreno e/ou a arquitetura de um ponto no alcance, transformando-o em uma armadilha de caçador.
+Garras de Rocha (RG). Você molda a superfície, fazendo brotar garras feitas de rocha que tentam agarrar criaturas Grandes ou menores na área.
+Metamorfose. Transforma o corpo do alvo.
+Velocidade. Alvo pode fazer ações adicionais.
+
+Publicidade
+Divinas
+Abjur
+
+Círculo da Justiça. Causa penalidades em Enganação, Furtividade e Ladinagem.
+Couraça de Allihanna (DH). Esta magia transforma o alvo em uma couraça arbórea.
+Desfazer Engenhoca (DH). Você desfaz os efeitos ativos de engenhocas, como se sua duração tivesse acabado.
+Dissipar Magia. Cancela os efeitos de uma magia ativa em um alvo ou área
+Runa de Proteção. Runa protege passagem ou objeto.
+Traição da Lâmina (DH). Quando faz um ataque o usuário deve passar em um teste de Vontade. Se falhar, a arma se retorce e o agressor se torna o alvo do próprio ataque.
+Traição Mágica (DH). Esta magia desestabiliza outras magias ativas no alvo, fazendo com que elas causem uma súbita descarga de energia mística.
+Vestimenta da Fé. Traje, armadura ou escudo recebe bônus na Defesa.
+Adiv
+
+Augúrio. Diz se uma ação trará resultados bons, ruins ou ambos.
+Condição. Monitora a condição (PV, condições, magias afetando) de criaturas tocadas.
+Globo da Verdade de Gwen. Globo revela cena vista pelo conjurador.
+Mente Divina. Fornece bônus em um ou mais atributos mentais.
+Olhos nas Sombras (RG). Você manifesta olhos flutuantes feitos de sombras.
+Voz Divina. Converse com criaturas variadas, plantas, rochas e cadáveres.
+Conv
+
+Enxame de Pestes. Alvo sofre dano de veneno toda rodada.
+Preparação de Batalha (NPC). Você pode convocar itens que aparecem sobre seu corpo e em suas mãos.
+Soco de Arsenal. Alvo sofre dano de impacto e é empurrado.
+Encan
+
+Aliado Animal. Um animal prestativo se torna um aliado.
+Marca da Obediência. Símbolo mágico obriga o alvo a cumprir uma ordem.
+Oração. Aliados recebem bônus e inimigos sofrem penalidades em testes e rolagens.
+Evoc
+
+Controlar Fogo. Move ou apaga uma chama, esquenta um objeto ou cria armas flamejantes.
+Emular Magia (DH). Você pode lançar uma única magia que tenha visto ser lançada em alcance curto desde sua última rodada.
+Fúria da Pedra (RG). Você faz o solo explodir, projetando pedaços de pedra e lava que causam dano.
+Necrofogo (DB). Você toca o chão, fazendo-o irromper em chamas profanas. Criaturas na área sofrem pontos de dano de fogo e trevas.
+Punição do Profano (DH). Esta magia causa dano de impacto a devotos de deuses que canalizam energia oposta a seu deus.
+Purificação. Toque remove condições prejudiciais.
+Raio Solar. Linha causa dano de luz e deixa criaturas ofuscadas.
+Tempestade Divina. Causa efeitos de vento, precipitações e penalidades para criaturas voadoras.
+Ilusão
+
+Silêncio. Cria uma área em que é impossível ouvir sons ou lançar magias.
+Necro
+
+Conjurar Mortos-Vivos. Ergue mortos-vivos para lutar por você.
+Miasma Mefítico. Nuvem causa dano de veneno e enjoo.
+Rogar Maldição. O alvo sofre efeitos prejudiciais variados.
+Trans
+
+Controlar Ar (DB). Você pode controlar os movimentos e comportamentos de massas de ar
+Controlar Madeira. Fortalece, molda, repele ou deforma um objeto de madeira.
+Físico Divino. Fornece bônus em um ou mais atributos físicos.
+Garras de Rocha (RG). Você molda a superfície, fazendo brotar garras feitas de rocha que tentam agarrar criaturas Grandes ou menores na área.
+
+Publicidade
+3° Círculo
+Arcanas
+Abjur
+
+Âncora Dimensional. Impede o alvo de se afastar de um ponto, mesmo com teletransporte.
+Dificultar Detecção. Protege uma criatura ou objeto contra detecção e vidência.
+Globo de Invulnerabilidade. Esfera protege contra magias de 1º e 2º círculos.
+Adiv
+
+Contato Extraplanar. Você barganha com criaturas poderosas de outros planos para obter ajuda.
+Lendas e Histórias. Descobre detalhes sobre criaturas, objetos e lugares.
+Vidência. Pode ver e ouvir os arredores de uma criatura.
+Conv
+
+Convocação Instantânea. Teletransporta um objeto marcado para suas mãos.
+Enxame Rubro de Ichabod. Invoca uma massa rastejante de demônios da Tormenta.
+Teletransporte. Transporta você e outras criaturas e objetos para um local instantaneamente.
+Encan
+
+Imobilizar. Alvo fica lento ou paralisado.
+Selo de Mana. Você sela a energia de uma criatura, impedindo que use pontos de mana.
+Evoc
+
+Chuva Ácida (RG). Você evoca uma chuva de líquido ácido sobre todas as criaturas e objetos livres.
+Erupção Glacial. Estacas de gelo explodem do chão, ferindo e derrubando os alvos.
+Escudo de Chamas (RG). Você manifesta uma aura de chamas ao redor do alvo.
+Hálito Peçonhento (DB). Você sopra uma fumaça densa esverdeada de toxinas corrosivas.
+Impacto Fulminante (DB). Você evoca um relâmpago dos céus que acerta o alvo com um clarão estrondoso.
+Lança Ígnea de Aleph. Projétil de magma explode no alvo, causando dano por rodada.
+Muralha Elemental. Evoca um muro feito de fogo ou gelo.
+Toque Álgido (AA). Sua mão emite uma energia congelante.
+Ilusão
+
+Ilusão Lacerante. Cria uma ilusão perigosa que pode causar dano real.
+Manto de Sombras. Conjurador se cobre de sombras mágicas para vários efeitos.
+Miragem. Altera uma área de forma ilusória.
+Necro
+
+Coração Imortal (DH). Manipulando energias necromânticas, você concentra sua força vital em uma parte específica do seu corpo.
+Ferver Sangue. Criatura tem seu sangue aquecido até borbulhar, causando dano.
+Servo Morto-Vivo. Cria um aliado morto-vivo sob seu comando.
+Tentáculos de Trevas. Tentáculos de energia negativa atacam e agarram criaturas na área.
+Trans
+
+Asas de Coruja (RG). Você conjura gigantescas asas de coruja e recebe deslocamento de voo.
+Pântano Maldito (RG). Você transforma a área em um pântano sem vida.
+Pele de Pedra. Endurece sua pele, fornecendo resistência a dano.
+Telecinesia. Move e arremessa criaturas e objetos com a mente.
+Transformação de Guerra. Você recebe habilidades superiores de combate, mas perde a habilidade de lançar magias.
+Voo. Você recebe deslocamento voo 12m.
+
+Publicidade
+Divinas
+Abjur
+
+Banimento. Expulsa criaturas de outros planos e destrói mortos-vivos.
+Proteção contra Magia. Concede bônus em testes de resistência contra magias.
+Adiv
+
+Comunhão com a Natureza. Você recebe dados para usar como bônus em testes de perícias.
+Lendas e Histórias. Descobre detalhes sobre criatuas, objetos e magias.
+Vidência. Pode ver e ouvir os arredores de uma criatura.
+Conv
+
+Banquete dos Heróis (RG). você abre o recipiente alvo e retira de dentro dele alimento e bebida para até 10 pessoas realizarem um banquete suntuoso.
+Companheiro Fiel (RG). Você conjura uma criatura de magia que serve como seu protetor, geralmente na forma de um cão espectral.
+Servo Divino. Invoca um espírito para realizar uma tarefa, por um preço.
+Viagem Arbórea. Você pode usar árvores e plantas para se teletransportar.
+Encan
+
+Despertar Consciência. Plantas e animais ganham consciência e se tornam aliados.
+Heroísmo. Alvo fica imune a medo e ganha bônus contra inimigos mais poderosos do que ele.
+Imobilizar. Alvo fica lento ou paralisado.
+Missão Divina. Alvo deve cumprir uma tarefa, ou sofrer penalidades em testes.
+Selo de Mana. Você sela a energia de uma criatura, impedindo que use Pontos de Mana.
+Evoc
+
+Aura Restauradora (DB). Você evoca uma aura poderosíssima de energia positiva.
+Coluna de Chamas. Os céus despejam luz e fogo sobre seus inimigos.
+Dispersar as Trevas. Dispersão anula magias, protege aliados e cega inimigos.
+Sopro da Salvação. Cone cura aliados e remove condições prejudiciais.
+Ilusão
+
+Manto de Sombras. Conjurador se cobre de sombras mágicas para vários efeitos.
+Necro
+
+Anular a Luz. Explosão anula magias, protege aliados e enjoa inimigos.
+Coração Imortal (DH). Manipulando energias necromânticas, você concentra sua força vital em uma parte específica do seu corpo.
+Poeira da Podridão. Nuvem causa dano de trevas e impede magia de cura.
+Servo Morto-Vivo. Cria um aliado morto-vivo sob seu comando.
+Trans
+
+Asas de Coruja (RG). Você conjura gigantescas asas de coruja e recebe deslocamento de voo.
+Controlar Água. Congela, derrete, evapora, aumenta ou reduz o nível de um corpo d’água.
+Controlar Terra. Amolece, molda ou solidifica uma área de terra, pedra ou similar.
+Pântano Maldito (RG). Você transforma a área em um pântano sem vida.
+Pele de Pedra. Endurece sua pele, fornecendo resistência a dano.
+Potência Divina. Você aumenta de tamanho e recebe bônus de Força e resistência a dano, mas perde habilidade de lançar magias.
+
+Publicidade
+4° Círculo
+Arcanas
+Abjur
+
+Campo Antimagia. Barreira anula todos os efeitos mágicos.
+Libertação. O alvo fica imune a efeitos que impeçam ou restrinjam movimentação.
+Adiv
+
+Sonho. Você entra nos sonhos de uma criatura, e pode interagir com ela lá.
+Visão da Verdade. Você enxerga através de camuflagem, escuridão, ilusão e transmutação.
+Conv
+
+Conjurar Elemental. Conjura um elemental como aliado.
+Mão Poderosa de Talude. Mão gigante feita de energia pode realizar várias ações.
+Viagem Planar. Viaja até outro plano de existência.
+Encan
+
+Alterar Memória. Pode apagar ou modificar a memória recente do alvo.
+Marionete. Controla o corpo do alvo e seus movimentos.
+Evoc
+
+Raio de Plasma (DB). Você dispara uma rajada luminosa superaquecida.
+Raio Polar. Causa dano de frio e congela o alvo.
+Relâmpago Flamejante de Reynard. Dispara rajadas de fogo e relâmpago.
+Sopro de Dragão (RG). Você inspira fundo e expele um sopro como a temível baforada dos dragões.
+Talho Invisível de Edauros. Lâmina de ar em alta velocidade corta os alvos.
+Ilusão
+
+Duplicata Ilusória. Imagem projetada copia seus movimentos e ações.
+Explosão Caleidoscópica. Explosão de luzes e sons desabilita os alvos.
+Necro
+
+Assassino Fantasmagórico. Conjura uma fantasma que persegue e tenta matar o alvo.
+Muralha de Ossos. Barreira de ossos afiados impede o avanço dos inimigos.
+Névoa dos Mortos (RG). Seu corpo adquire uma aparência sem vida, como a de um morto, e um par de asas de névoa sombria surgem de suas costas.
+Trans
+
+Animar Objetos. Objetos comuns ganham vida e obedecem seus comandos.
+Bênção da Dragoa Rainha (DB). Suas magias que causam dano de frio têm seu dano maximizado.
+Controlar a Gravidade. Manipula os efeitos da gravidade em uma área.
+Desintegrar. Raio transforma um alvo em pó.
+Forma Etérea. Você pode se tornar etéreo enquanto a magia durar.
+Pântano Vitriólico (AA). Você transforma o solo da área em um lodo viscoso ácido e pegajoso.
+Salto Relâmpago (RG). Enquanto esta magia durar, você pode usar uma ação de movimento para se teletransportar até 12m em linha reta para qualquer direção, deixando um “rastro” de eletricidade no caminho.
+Transformação em Dragão (AA). Essa magia invoca o poder de um dragão, causando mutações no conjurador que o tornam semelhante a uma criatura dracônica.
+
+Publicidade
+Divinas
+Abjur
+
+Cúpula de Repulsão. Campo de força invisível impede a aproximação de um tipo de criatura.
+Libertação. O alvo fica imune a efeitos que impeçam ou restrinjam movimentação.
+Adiv
+
+Premonição. Você vislumbra o futuro e pode refazer um teste.
+Visão da Verdade. Você enxerga através de camuflagem, escuridão, ilusão e transmutação.
+Conv
+
+Guardião Divino. Elemental de luz cura aliados.
+Viagem Planar. Viaja até outro plano de existência.
+Encan
+
+Conceder Milagre. Alvo pode lançar uma de suas magias de 2º círculo ou menor.
+Juramento Sagrado (RG). Você clama por ajuda divina para enfrentar e derrotar um inimigo em alcance curto.
+Evoc
+
+Círculo da Restauração. Círculo de energia luminosa restaura PV e PM.
+Cólera do Sol. Explosão solar cega, incendeia e causa dano.
+Manto do cruzado. invoca um manto de energia que concede poderes a quem o vestir.
+Terremoto. Tremor de terra causa dano de impacto.
+Necro
+
+Ligação Sombria. Alvo sofre todo dano e efeitos negativos que você sofrer.
+Muralha de Ossos. Barreira de ossos afiados impede o avanço dos inimigos.
+Névoa dos Mortos (RG). Seu corpo adquire uma aparência sem vida, como a de um morto, e um par de asas de névoa sombria surgem de suas costas.
+Trans
+
+Controlar o Clima. Muda o clima de uma área.
+
+Publicidade
+5° Círculo
+Arcanas
+Abjur
+
+Aprisionamento. Prende o alvo de diversas formas poderosas.
+Engenho de Mana. Disco de energia flutuante é capaz de absorver magias e gerar PM.
+Invulnerabilidade. Recebe uma série de imunidades físicas ou mentais a sua escolha.
+Adiv
+
+Alterar Destino. Enxerga o futuro, podendo alterar o resultado de um teste.
+Projetar Consciência. Pode observar qualquer local ou criatura.
+Conv
+
+Buraco Negro. Abre uma ruptura no espaço que suga tudo ao redor.
+Chuva de Meteoros. Convoca um enorme meteorito incandescente.
+Semiplano. Cria uma pequena dimensão.
+Encan
+
+Legião. Você pode dominar a mente de vários alvos ao mesmo tempo e comandar suas vontades.
+Palavra Primordial. Palavras mágicas primordiais podem atordoar, cegar e até matar uma criatura.
+Possessão. Transfere sua consciência para o corpo do alvo, tomando controle total.
+Evoc
+
+Barragem Elemental de Vectorius. Lança esferas elementais explosivas.
+Deflagração de Mana. Explosão de energia bruta causa dano e afeta magias e itens mágicos.
+Katana Celestial (AA). Um golpe vindo dos céus risca o campo de batalha.
+Mata-Dragão. Dispara uma rajada de energia destruidora.
+Ilusão
+
+Réquiem. Prende os alvos em uma realidade ilusória que se repete infinitamente.
+Sombra Assassina. Manifesta uma cópia ilusória do alvo, que luta contra ele.
+Necro
+
+Roubar a Alma. Arranca a alma do alvo e prende em um objeto.
+Toque da Morte. Pode matar uma criatura instantaneamente.
+Trans
+
+Controlar o Tempo. Acelera, avança ou para o tempo.
+Desejo. Modifica a realidade a seu bel prazer.
+Simulacro de Gelo Eterno (DB). O simulacro compartilha todas as suas memórias, mas tem vontade própria e não necessariamente obedece às suas ordens.
+
+Publicidade
+Divinas
+Abjur
+
+Aura Divina. Emana poder divino bruto, afetando as criaturas na área.
+Invulnerabilidade. Recebe uma série de imunidades físicas ou mentais a sua escolha.
+Lágrimas da Deusa da Magia. Alvo perde a capacidade de lançar magias arcanas.
+Adiv
+
+Projetar Consciência. Pode observar qualquer local ou criatura dentro.
+Conv
+
+Buraco Negro. Abre uma ruptura no espaço que suga tudo ao redor.
+Intervenção Divina. Convoca sua divindade para que realize um milagre.
+Encan
+
+Palavra Primordial. Palavras mágicas primordiais podem atordoar, cegar e até matar uma criatura.
+Evoc
+
+Devastação Divina (RG). Um cone de energia é projetado. Todas as criaturas e objetos na área sofrem dano de essência.
+Fúria do Panteão. Nuvem gera efeitos destrutivos.
+Segunda Chance. Cura e ressuscita aliados.
+Necro
+
+Reanimação Impura. Ressuscita uma criatura morta, mas como um zumbi sob seu controle.
+Roubar a Alma. Arranca a alma do alvo e prende em um objeto.
+Toque da Morte. Pode matar uma criatura instantaneamente.
